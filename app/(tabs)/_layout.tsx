@@ -1,33 +1,52 @@
+import { Ionicons } from '@expo/vector-icons'; // On utilise les icônes Ionicons
 import { Tabs } from 'expo-router';
 import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarStyle: Platform.select({
+          ios: { position: 'absolute' },
+          default: {},
+        }),
       }}>
+      
+      {/* 1. SCANNER (Page d'accueil) */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Scanner',
+          tabBarIcon: ({ color }) => <Ionicons name="camera" size={28} color={color} />,
         }}
       />
+
+      {/* 2. POKEDEX (La liste) */}
       <Tabs.Screen
-        name="explore"
+        name="pokedex"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Pokédex',
+          tabBarIcon: ({ color }) => <Ionicons name="book" size={28} color={color} />,
+        }}
+      />
+
+      {/* 3. LOGBOOK (Journal de bord - Vide pour l'instant) */}
+      <Tabs.Screen
+        name="logbook"
+        options={{
+          title: 'Journal',
+          tabBarIcon: ({ color }) => <Ionicons name="journal" size={28} color={color} />,
+        }}
+      />
+
+      {/* 4. MAP (Carte - Vide pour l'instant) */}
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Carte',
+          tabBarIcon: ({ color }) => <Ionicons name="globe" size={28} color={color} />,
         }}
       />
     </Tabs>
