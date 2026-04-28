@@ -58,6 +58,8 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* 4. MAP (Carte - Vide pour l'instant) */}
       <Tabs.Screen
         name="profile"
         options={{
