@@ -46,13 +46,25 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem("pokedex_save");
-              await AsyncStorage.removeItem("user_logs");
+              // On nettoie TOUTES les clés (anciennes + nouvelles : voyages, compte, avatar…)
+              await AsyncStorage.multiRemove([
+                "pokedex_save",
+                "user_logs",
+                "user_trips",
+                "user_buddy",
+                "user_avatar_color",
+                "user_avatar_id",
+                "user_name",
+                "user_email",
+                "user_created_at",
+                "onboarding_done",
+                "has_account",
+              ]);
               setSelectedImage(null);
               setTempSpeciesName("");
               Alert.alert(
                 "Reset Terminé",
-                "L'application est comme neuve ! 🧹",
+                "L'application est comme neuve ! 🧹 Relance l'app pour repartir du login.",
               );
             } catch (e) {
               Alert.alert("Erreur", "Le reset a échoué.");

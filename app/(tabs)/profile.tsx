@@ -1,21 +1,38 @@
-import { Animal, initialAnimals, Observation } from "@/constants/MarineData";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+// Profil enrichi :
+// - Vrais avatars (presets variés avec couleur de fond + emoji personnage)
+// - Pseudo personnalisable
+// - Stats détaillées (voyages, observations, espèces, pays, photos)
+// - Badges enrichis avec progression visuelle
+// - Lien vers la page de l'association Revosea
 import {
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animal,
+  initialAnimals,
+  Observation,
+  Trip,
+} from "@/constants/MarineData";
+import {
+  AVATAR_PRESETS,
+  getAvatarById,
+  STORAGE_KEYS,
+} from "@/constants/Storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-// --- CONFIGURATION DU JEU ---
+// --- GRADES ---
 const RANKS = [
   { name: "Baigneur", minXp: 0, color: "#81D4FA" },
   { name: "Plongeur Open Water", minXp: 500, color: "#4FC3F7" },
@@ -25,200 +42,212 @@ const RANKS = [
   { name: "Légende des Océans", minXp: 10000, color: "#01579B" },
 ];
 
-const BADGES_CONFIG = [
-  {
-    id: "shark_lover",
-    title: "Grand Requin",
-    description: "Découvre des animaux de la famille Requin",
-    family: "Requin",
-    count: 3,
-    icon: "🦈",
-  },
-  {
-    id: "whale_watcher",
-    title: "Ami des Géants",
-    description: "Découvre des Cétacés (Baleines, Dauphins...)",
-    family: "Cétacé",
-    count: 3,
-    icon: "🐋",
-  },
-  {
-    id: "turtle_fan",
-    title: "Carapace",
-    description: "Observe différentes espèces de Tortues",
-    family: "Tortue",
-    count: 2,
-    icon: "🐢",
-  },
-  {
-    id: "ray_rider",
-    title: "Ailes de Mer",
-    description: "Croise le chemin des Raies",
-    family: "Raie",
-    count: 2,
-    icon: "🪁",
-  },
-  {
-    id: "fish_expert",
-    title: "Ichtyologue",
-    description: "Identifie 5 poissons différents",
-    family: "Poisson",
-    count: 5,
-    icon: "🐠",
-  },
-  {
-    id: "globetrotter",
-    title: "Globetrotter",
-    description: "Visite 3 pays différents",
-    type: "continents",
-    count: 3,
-    icon: "🌍",
-  },
-];
+// --- BADGES ENRICHIS ---
+// Catégorisés : Familles, Quantité, Géographie, Voyages, Rareté, Médias
+type BadgeKind =
+  | "family"
+  | "countries"
+  | "obs_count"
+  | "trip_count"
+  | "rarity"
+  | "photos";
 
-// Styles d'avatars prédéfinis (Alternative simple à la création 3D)
-const AVATAR_STYLES = [
-  { id: "blue", color: "#006994", label: "Bleu Profond" },
-  { id: "red", color: "#E53935", label: "Rouge Alerte" },
-  { id: "green", color: "#43A047", label: "Algues" },
-  { id: "yellow", color: "#FDD835", label: "Sous-marin" },
-  { id: "pink", color: "#E91E63", label: "Corail" },
-  { id: "black", color: "#333333", label: "Combinaison Pro" },
+interface BadgeDef {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  kind: BadgeKind;
+  target: number;
+  family?: string;
+}
+
+const BADGES_CONFIG: BadgeDef[] = [
+  // Quantité
+  { id: "first_dive", title: "Première Bulle", description: "Première observation", icon: "💧", kind: "obs_count", target: 1 },
+  { id: "ten_obs", title: "Carnet Tenu", description: "10 observations enregistrées", icon: "📔", kind: "obs_count", target: 10 },
+  { id: "fifty_obs", title: "Explorateur Assidu", description: "50 observations", icon: "🔭", kind: "obs_count", target: 50 },
+
+  // Familles
+  { id: "shark_lover", title: "Grand Requin", description: "3 espèces de requins", icon: "🦈", kind: "family", target: 3, family: "Requin" },
+  { id: "whale_watcher", title: "Ami des Géants", description: "3 cétacés différents", icon: "🐋", kind: "family", target: 3, family: "Cétacé" },
+  { id: "turtle_fan", title: "Carapace", description: "2 espèces de tortues", icon: "🐢", kind: "family", target: 2, family: "Tortue" },
+  { id: "ray_rider", title: "Ailes de Mer", description: "2 espèces de raies", icon: "🪁", kind: "family", target: 2, family: "Raie" },
+  { id: "fish_expert", title: "Ichtyologue", description: "5 poissons identifiés", icon: "🐠", kind: "family", target: 5, family: "Poisson osseux" },
+
+  // Géographie
+  { id: "globetrotter", title: "Globetrotter", description: "Visite 3 pays", icon: "🌍", kind: "countries", target: 3 },
+  { id: "world_tour", title: "Tour du Monde", description: "Visite 7 pays", icon: "✈️", kind: "countries", target: 7 },
+
+  // Voyages
+  { id: "first_trip", title: "Premier Voyage", description: "Crée ton premier voyage", icon: "🧳", kind: "trip_count", target: 1 },
+  { id: "trip_master", title: "Grand Voyageur", description: "5 voyages documentés", icon: "🗺️", kind: "trip_count", target: 5 },
+
+  // Rareté
+  { id: "rare_find", title: "Chasseur de Légendes", description: "Observe une espèce rare", icon: "✨", kind: "rarity", target: 1 },
+  { id: "legend_3", title: "Triple Légende", description: "3 espèces rares", icon: "🌟", kind: "rarity", target: 3 },
+
+  // Photos
+  { id: "photographer", title: "Œil d'Or", description: "10 photos personnelles", icon: "📸", kind: "photos", target: 10 },
 ];
 
 export default function ProfileScreen() {
-  // Données
   const [userXp, setUserXp] = useState(0);
   const [logs, setLogs] = useState<Observation[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [pokedex, setPokedex] = useState<Animal[]>(initialAnimals);
+
+  const [username, setUsername] = useState("Explorateur");
+  const [avatarId, setAvatarId] = useState<string>(AVATAR_PRESETS[0].id);
   const [buddyId, setBuddyId] = useState<string | null>(null);
-  const [avatarColor, setAvatarColor] = useState("#006994"); // Couleur par défaut
 
   // Modals
   const [showBuddySelector, setShowBuddySelector] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [showNameEditor, setShowNameEditor] = useState(false);
+  const [editName, setEditName] = useState("");
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfileData();
+      const load = async () => {
+        try {
+          const stored = await AsyncStorage.multiGet([
+            STORAGE_KEYS.LOGS,
+            STORAGE_KEYS.POKEDEX,
+            STORAGE_KEYS.BUDDY,
+            STORAGE_KEYS.AVATAR_ID,
+            STORAGE_KEYS.USERNAME,
+            STORAGE_KEYS.TRIPS,
+          ]);
+          const map = Object.fromEntries(stored) as Record<string, string | null>;
+
+          const parsedLogs: Observation[] = map[STORAGE_KEYS.LOGS]
+            ? JSON.parse(map[STORAGE_KEYS.LOGS]!)
+            : [];
+          const parsedTrips: Trip[] = map[STORAGE_KEYS.TRIPS]
+            ? JSON.parse(map[STORAGE_KEYS.TRIPS]!)
+            : [];
+
+          let parsedPokedex: Animal[] = initialAnimals;
+          if (map[STORAGE_KEYS.POKEDEX]) {
+            const loaded = JSON.parse(map[STORAGE_KEYS.POKEDEX]!);
+            parsedPokedex = initialAnimals.map((s) => {
+              const found = loaded.find(
+                (a: Animal) =>
+                  a.name.trim().toLowerCase() === s.name.trim().toLowerCase(),
+              );
+              return found ? { ...s, discovered: found.discovered } : s;
+            });
+          }
+
+          setLogs(parsedLogs);
+          setTrips(parsedTrips);
+          setPokedex(parsedPokedex);
+          if (map[STORAGE_KEYS.BUDDY]) setBuddyId(map[STORAGE_KEYS.BUDDY]);
+          if (map[STORAGE_KEYS.AVATAR_ID])
+            setAvatarId(map[STORAGE_KEYS.AVATAR_ID]!);
+          if (map[STORAGE_KEYS.USERNAME])
+            setUsername(map[STORAGE_KEYS.USERNAME]!);
+
+          calculateXp(parsedPokedex, parsedLogs, parsedTrips);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      load();
     }, []),
   );
 
-  const loadProfileData = async () => {
-    try {
-      const savedLogs = await AsyncStorage.getItem("user_logs");
-      const savedPokedex = await AsyncStorage.getItem("pokedex_save");
-      const savedBuddy = await AsyncStorage.getItem("user_buddy");
-      const savedAvatar = await AsyncStorage.getItem("user_avatar_color");
-
-      const parsedLogs: Observation[] = savedLogs ? JSON.parse(savedLogs) : [];
-
-      // Reconstitution du Pokedex
-      let parsedPokedex: Animal[] = initialAnimals;
-      if (savedPokedex) {
-        const loadedData = JSON.parse(savedPokedex);
-        parsedPokedex = initialAnimals.map((staticA) => {
-          const savedA = loadedData.find(
-            (a: Animal) => a.name === staticA.name,
-          );
-          return savedA
-            ? { ...staticA, discovered: savedA.discovered }
-            : staticA;
-        });
-      }
-
-      setLogs(parsedLogs);
-      setPokedex(parsedPokedex);
-      if (savedBuddy) setBuddyId(savedBuddy);
-      if (savedAvatar) setAvatarColor(savedAvatar);
-
-      calculateXp(parsedPokedex, parsedLogs);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const calculateXp = (animals: Animal[], observations: Observation[]) => {
+  const calculateXp = (animals: Animal[], obs: Observation[], tps: Trip[]) => {
     let xp = 0;
-    animals.forEach((anim) => {
-      if (anim.discovered) {
-        xp += anim.rarity === 3 ? 500 : anim.rarity === 2 ? 250 : 100;
-      }
+    animals.forEach((a) => {
+      if (a.discovered)
+        xp += a.rarity === 3 ? 500 : a.rarity === 2 ? 250 : 100;
     });
-    xp += observations.length * 50;
+    xp += obs.length * 50;
+    xp += tps.length * 200; // bonus voyages
     setUserXp(xp);
   };
 
-  const getCurrentRank = () => {
-    for (let i = RANKS.length - 1; i >= 0; i--) {
+  const currentRank = useMemo(() => {
+    for (let i = RANKS.length - 1; i >= 0; i--)
       if (userXp >= RANKS[i].minXp) return RANKS[i];
-    }
     return RANKS[0];
-  };
-
-  const getNextRank = () => {
-    for (let i = 0; i < RANKS.length; i++) {
+  }, [userXp]);
+  const nextRank = useMemo(() => {
+    for (let i = 0; i < RANKS.length; i++)
       if (userXp < RANKS[i].minXp) return RANKS[i];
-    }
     return null;
-  };
+  }, [userXp]);
 
-  // --- LOGIQUE BADGES (Calcul de la progression) ---
-  const getBadgeProgress = (badge: any) => {
-    if (badge.type === "continents") {
-      const uniqueLocations = new Set(logs.map((l) => l.location)).size;
-      return {
-        current: uniqueLocations,
-        target: badge.count,
-        unlocked: uniqueLocations >= badge.count,
-      };
-    } else {
-      const count = pokedex.filter(
-        (a) => a.discovered && a.family === badge.family,
-      ).length;
-      return {
-        current: count,
-        target: badge.count,
-        unlocked: count >= badge.count,
-      };
-    }
-  };
+  // --- Progression badges ---
+  // Logique inlinée dans le useMemo pour stabiliser les dépendances React
+  const badgesWithProgress = useMemo(
+    () =>
+      BADGES_CONFIG.map((b) => {
+        let cur = 0;
+        switch (b.kind) {
+          case "obs_count":
+            cur = logs.length;
+            break;
+          case "family":
+            cur = pokedex.filter(
+              (a) => a.discovered && a.family === b.family,
+            ).length;
+            break;
+          case "countries":
+            cur = new Set(
+              logs.map((l) => l.location).filter((x) => x && x !== "Inconnu"),
+            ).size;
+            break;
+          case "trip_count":
+            cur = trips.length;
+            break;
+          case "rarity":
+            cur = pokedex.filter((a) => a.discovered && a.rarity === 3).length;
+            break;
+          case "photos":
+            cur = logs.filter((l) => l.userPhoto).length;
+            break;
+        }
+        return { ...b, current: cur, unlocked: cur >= b.target };
+      }),
+    [logs, pokedex, trips],
+  );
 
-  // --- ACTIONS ---
-  const saveBuddy = async (animalName: string) => {
-    setBuddyId(animalName);
+  const saveBuddy = async (n: string) => {
+    setBuddyId(n);
     setShowBuddySelector(false);
-    await AsyncStorage.setItem("user_buddy", animalName);
-    Alert.alert(
-      "Nouveau Compagnon !",
-      `${animalName} voyage maintenant avec toi !`,
-    );
+    await AsyncStorage.setItem(STORAGE_KEYS.BUDDY, n);
+    Alert.alert("Nouveau Compagnon !", `${n} voyage maintenant avec toi !`);
   };
-
-  const saveAvatar = async (color: string) => {
-    setAvatarColor(color);
+  const saveAvatar = async (id: string) => {
+    setAvatarId(id);
     setShowAvatarSelector(false);
-    await AsyncStorage.setItem("user_avatar_color", color);
+    await AsyncStorage.setItem(STORAGE_KEYS.AVATAR_ID, id);
+  };
+  const saveName = async () => {
+    if (!editName.trim()) return;
+    setUsername(editName.trim());
+    await AsyncStorage.setItem(STORAGE_KEYS.USERNAME, editName.trim());
+    setShowNameEditor(false);
   };
 
-  // Récupération de l'objet Animal complet pour le Buddy
   const buddyAnimal = buddyId ? pokedex.find((a) => a.name === buddyId) : null;
-  const currentRank = getCurrentRank();
-  const nextRank = getNextRank();
+  const avatar = getAvatarById(avatarId);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
-        {/* --- EN-TÊTE : AVATAR & GRADE --- */}
-        <View style={styles.header}>
+        {/* HEADER */}
+        <View style={styles.headerCard}>
           <TouchableOpacity
             style={styles.avatarContainer}
             onPress={() => setShowAvatarSelector(true)}
           >
-            {/* Avatar simulé par une View colorée et une lettre */}
-            <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-              <Text style={{ fontSize: 30 }}>🤿</Text>
+            <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
+              <Text style={{ fontSize: 38 }}>{avatar.emoji}</Text>
             </View>
             <View style={styles.editIconBadge}>
               <Text style={{ fontSize: 10 }}>✏️</Text>
@@ -231,11 +260,19 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <View style={{ marginLeft: 15, flex: 1 }}>
-            <Text style={styles.username}>Explorateur</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setEditName(username);
+                setShowNameEditor(true);
+              }}
+              style={{ flexDirection: "row", alignItems: "center" }}
+            >
+              <Text style={styles.username}>{username}</Text>
+              <Text style={{ marginLeft: 6, opacity: 0.4 }}>✏️</Text>
+            </TouchableOpacity>
             <Text style={[styles.rankTitle, { color: currentRank.color }]}>
               {currentRank.name}
             </Text>
-
             {nextRank && (
               <View style={{ marginTop: 5 }}>
                 <View style={styles.xpBarBg}>
@@ -243,7 +280,12 @@ export default function ProfileScreen() {
                     style={[
                       styles.xpBarFill,
                       {
-                        width: `${Math.min(100, ((userXp - currentRank.minXp) / (nextRank.minXp - currentRank.minXp)) * 100)}%`,
+                        width: `${Math.min(
+                          100,
+                          ((userXp - currentRank.minXp) /
+                            (nextRank.minXp - currentRank.minXp)) *
+                            100,
+                        )}%`,
                         backgroundColor: currentRank.color,
                       },
                     ]}
@@ -257,7 +299,21 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* --- COMPAGNON DE VOYAGE --- */}
+        {/* STATS */}
+        <View style={styles.statsRow}>
+          <StatBox v={trips.length} l="Voyages" />
+          <StatBox v={logs.length} l="Observations" />
+          <StatBox v={pokedex.filter((a) => a.discovered).length} l="Espèces" />
+          <StatBox
+            v={
+              new Set(logs.map((l) => l.location).filter((x) => x && x !== "Inconnu"))
+                .size
+            }
+            l="Pays"
+          />
+        </View>
+
+        {/* COMPAGNON */}
         <View style={styles.buddyContainer}>
           <Text style={styles.sectionTitle}>Compagnon de Voyage</Text>
           <TouchableOpacity
@@ -266,7 +322,6 @@ export default function ProfileScreen() {
           >
             {buddyAnimal ? (
               <>
-                {/* Correction Image : resizeMode contain évite le carré blanc ou zoomé */}
                 <Image
                   source={buddyAnimal.image}
                   style={styles.buddyImage}
@@ -286,63 +341,147 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* --- STATISTIQUES --- */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{logs.length}</Text>
-            <Text style={styles.statLabel}>Observations</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>
-              {pokedex.filter((a) => a.discovered).length}
-            </Text>
-            <Text style={styles.statLabel}>Découvertes</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>
-              {new Set(logs.map((l) => l.location)).size}
-            </Text>
-            <Text style={styles.statLabel}>Pays</Text>
-          </View>
-        </View>
-
-        {/* --- BADGES --- */}
+        {/* BADGES */}
         <Text style={[styles.sectionTitle, { marginLeft: 20, marginTop: 20 }]}>
           Badges & Succès
         </Text>
+        <Text style={styles.badgeCount}>
+          {badgesWithProgress.filter((b) => b.unlocked).length} /{" "}
+          {badgesWithProgress.length} débloqués
+        </Text>
         <View style={styles.badgeGrid}>
-          {BADGES_CONFIG.map((badge, index) => {
-            const progress = getBadgeProgress(badge);
-            return (
-              <TouchableOpacity
-                key={index}
+          {badgesWithProgress.map((b, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.badgeItem, !b.unlocked && styles.badgeLocked]}
+              onPress={() => setSelectedBadge(b)}
+            >
+              <View
                 style={[
-                  styles.badgeItem,
-                  !progress.unlocked && styles.badgeLocked,
+                  styles.badgeCircle,
+                  b.unlocked
+                    ? { backgroundColor: "#FFD700" }
+                    : { backgroundColor: "#e0e0e0" },
                 ]}
-                onPress={() => setSelectedBadge({ ...badge, ...progress })}
               >
+                <Text style={{ fontSize: 30 }}>
+                  {b.unlocked ? b.icon : "🔒"}
+                </Text>
+              </View>
+              <Text style={styles.badgeTitle} numberOfLines={2}>
+                {b.title}
+              </Text>
+              {/* Mini barre de progression sous chaque badge */}
+              <View style={styles.miniBar}>
                 <View
                   style={[
-                    styles.badgeCircle,
-                    progress.unlocked
-                      ? { backgroundColor: "#FFD700" }
-                      : { backgroundColor: "#e0e0e0" },
+                    styles.miniBarFill,
+                    {
+                      width: `${Math.min(100, (b.current / b.target) * 100)}%`,
+                      backgroundColor: b.unlocked ? "#4CAF50" : "#FFA000",
+                    },
                   ]}
-                >
-                  <Text style={{ fontSize: 30 }}>
-                    {progress.unlocked ? badge.icon : "🔒"}
-                  </Text>
-                </View>
-                <Text style={styles.badgeTitle}>{badge.title}</Text>
-              </TouchableOpacity>
-            );
-          })}
+                />
+              </View>
+              <Text style={styles.badgeProgress}>
+                {b.current}/{b.target}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* À PROPOS */}
+        <View style={styles.aboutSection}>
+          <TouchableOpacity
+            style={styles.aboutCard}
+            onPress={() => router.push("/revosea")}
+            activeOpacity={0.85}
+          >
+            <View style={styles.revoBadge}>
+              <Text style={{ fontSize: 28 }}>🐬</Text>
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.revoTitle}>Revosea</Text>
+              <Text style={styles.revoSub}>
+                Découvrir l&apos;association partenaire
+              </Text>
+            </View>
+            <Text style={{ fontSize: 22, color: "#006994" }}>→</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ================= MODALS ================= */}
 
-        {/* 1. SÉLECTEUR BUDDY */}
+        {/* AVATAR */}
+        <Modal visible={showAvatarSelector} animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Choisis ton avatar</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: 400 }}
+              >
+                <View style={styles.avatarGrid}>
+                  {AVATAR_PRESETS.map((a) => (
+                    <TouchableOpacity
+                      key={a.id}
+                      style={[
+                        styles.avatarOption,
+                        { backgroundColor: a.bg },
+                        avatarId === a.id && styles.avatarSelected,
+                      ]}
+                      onPress={() => saveAvatar(a.id)}
+                    >
+                      <Text style={{ fontSize: 28 }}>{a.emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowAvatarSelector(false)}
+              >
+                <Text style={styles.closeButtonText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* PSEUDO */}
+        <Modal visible={showNameEditor} animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Modifier ton pseudo</Text>
+              <TextInput
+                style={styles.nameInput}
+                value={editName}
+                onChangeText={setEditName}
+                maxLength={20}
+              />
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                <TouchableOpacity
+                  style={[styles.closeButton, { flex: 1 }]}
+                  onPress={() => setShowNameEditor(false)}
+                >
+                  <Text style={styles.closeButtonText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.closeButton,
+                    { flex: 1, backgroundColor: "#006994" },
+                  ]}
+                  onPress={saveName}
+                >
+                  <Text style={[styles.closeButtonText, { color: "white" }]}>
+                    Enregistrer
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* BUDDY */}
         <Modal visible={showBuddySelector} animationType="slide">
           <SafeAreaView style={{ flex: 1 }}>
             <View style={styles.modalHeader}>
@@ -354,14 +493,14 @@ export default function ProfileScreen() {
             <ScrollView contentContainerStyle={styles.buddyList}>
               {pokedex
                 .filter((a) => a.discovered)
-                .map((animal) => (
+                .map((a) => (
                   <TouchableOpacity
-                    key={animal.id}
+                    key={a.id}
                     style={styles.buddyOption}
-                    onPress={() => saveBuddy(animal.name)}
+                    onPress={() => saveBuddy(a.name)}
                   >
                     <Image
-                      source={animal.image}
+                      source={a.image}
                       style={{ width: 60, height: 60 }}
                       resizeMode="contain"
                     />
@@ -373,26 +512,14 @@ export default function ProfileScreen() {
                         fontSize: 12,
                       }}
                     >
-                      {animal.name}
+                      {a.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               {pokedex.filter((a) => a.discovered).length === 0 && (
                 <View style={{ padding: 20 }}>
-                  <Text
-                    style={{ textAlign: "center", color: "#888", fontSize: 16 }}
-                  >
+                  <Text style={{ textAlign: "center", color: "#888", fontSize: 16 }}>
                     Tu n&apos;as pas encore découvert d&apos;animal ! 🕵️‍♂️
-                  </Text>
-                  <Text
-                    style={{
-                      textAlign: "center",
-                      color: "#888",
-                      marginTop: 10,
-                    }}
-                  >
-                    Utilise le Scanner ou le Journal pour débloquer des
-                    compagnons.
                   </Text>
                 </View>
               )}
@@ -400,53 +527,8 @@ export default function ProfileScreen() {
           </SafeAreaView>
         </Modal>
 
-        {/* 2. SÉLECTEUR AVATAR (Personnalisation Simple) */}
-        <Modal
-          visible={showAvatarSelector}
-          animationType="fade"
-          transparent={true}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Personnalise ton Plongeur</Text>
-              <Text
-                style={{ textAlign: "center", marginBottom: 15, color: "#666" }}
-              >
-                Choisis la couleur de ta combinaison
-              </Text>
-
-              <View style={styles.avatarGrid}>
-                {AVATAR_STYLES.map((style) => (
-                  <TouchableOpacity
-                    key={style.id}
-                    style={[
-                      styles.avatarOption,
-                      { backgroundColor: style.color },
-                      avatarColor === style.color && styles.avatarSelected,
-                    ]}
-                    onPress={() => saveAvatar(style.color)}
-                  >
-                    <Text style={{ fontSize: 24 }}>🤿</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowAvatarSelector(false)}
-              >
-                <Text style={styles.closeButtonText}>Annuler</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* 3. DÉTAILS BADGE */}
-        <Modal
-          visible={!!selectedBadge}
-          animationType="fade"
-          transparent={true}
-        >
+        {/* DETAIL BADGE */}
+        <Modal visible={!!selectedBadge} animationType="fade" transparent>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               {selectedBadge && (
@@ -465,18 +547,15 @@ export default function ProfileScreen() {
                       {selectedBadge.unlocked ? selectedBadge.icon : "🔒"}
                     </Text>
                   </View>
-
                   <Text style={styles.modalBadgeTitle}>
                     {selectedBadge.title}
                   </Text>
                   <Text style={styles.modalBadgeDesc}>
                     {selectedBadge.description}
                   </Text>
-
                   <View style={styles.progressContainer}>
                     <Text style={styles.progressText}>
-                      Progression : {selectedBadge.current} /{" "}
-                      {selectedBadge.target}
+                      Progression : {selectedBadge.current} / {selectedBadge.target}
                     </Text>
                     <View style={styles.progressBarBg}>
                       <View
@@ -492,17 +571,11 @@ export default function ProfileScreen() {
                       />
                     </View>
                   </View>
-
                   {selectedBadge.unlocked ? (
-                    <Text style={styles.unlockedText}>
-                      ✨ BADGE OBTENU ! ✨
-                    </Text>
+                    <Text style={styles.unlockedText}>✨ BADGE OBTENU ! ✨</Text>
                   ) : (
-                    <Text style={styles.lockedText}>
-                      Encore un petit effort !
-                    </Text>
+                    <Text style={styles.lockedText}>Encore un petit effort !</Text>
                   )}
-
                   <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() => setSelectedBadge(null)}
@@ -519,15 +592,20 @@ export default function ProfileScreen() {
   );
 }
 
+const StatBox = ({ v, l }: { v: number; l: string }) => (
+  <View style={styles.statBox}>
+    <Text style={styles.statValue}>{v}</Text>
+    <Text style={styles.statLabel}>{l}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f0f8ff",
     paddingTop: Platform.OS === "android" ? 40 : 0,
   },
-
-  // Header
-  header: {
+  headerCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 20,
@@ -538,9 +616,9 @@ const styles = StyleSheet.create({
   },
   avatarContainer: { position: "relative" },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
@@ -571,8 +649,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   levelText: { color: "white", fontWeight: "bold" },
-  username: { fontSize: 20, fontWeight: "bold", color: "#333" },
-  rankTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 5 },
+  username: { fontSize: 22, fontWeight: "bold", color: "#333" },
+  rankTitle: { fontSize: 15, fontWeight: "bold", marginBottom: 5 },
   xpBarBg: {
     height: 8,
     backgroundColor: "#eee",
@@ -582,7 +660,24 @@ const styles = StyleSheet.create({
   xpBarFill: { height: "100%", borderRadius: 4 },
   xpText: { fontSize: 10, color: "#888", marginTop: 2, textAlign: "right" },
 
-  // Buddy
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 18,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  statBox: {
+    backgroundColor: "white",
+    flex: 1,
+    padding: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    elevation: 2,
+  },
+  statValue: { fontSize: 18, fontWeight: "bold", color: "#006994" },
+  statLabel: { fontSize: 10, color: "#666", marginTop: 2, textAlign: "center" },
+
   buddyContainer: { marginTop: 20, paddingHorizontal: 20 },
   sectionTitle: {
     fontSize: 18,
@@ -599,54 +694,72 @@ const styles = StyleSheet.create({
     minHeight: 220,
     justifyContent: "center",
   },
-  buddyImage: { width: 250, height: 180, marginBottom: 10 }, // Taille ajustée
+  buddyImage: { width: 250, height: 180, marginBottom: 10 },
   buddyName: { fontSize: 22, fontWeight: "bold", color: "#333" },
   changeBuddyText: { fontSize: 12, color: "#888", marginTop: 5 },
 
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 20,
-    paddingHorizontal: 10,
+  badgeCount: {
+    textAlign: "center",
+    color: "#666",
+    fontSize: 12,
+    marginBottom: 8,
+    fontStyle: "italic",
   },
-  statBox: {
-    backgroundColor: "white",
-    width: "30%",
-    padding: 15,
-    borderRadius: 15,
-    alignItems: "center",
-    elevation: 2,
-  },
-  statValue: { fontSize: 20, fontWeight: "bold", color: "#006994" },
-  statLabel: { fontSize: 12, color: "#666" },
-
-  // Badges
   badgeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: 10,
     justifyContent: "center",
   },
-  badgeItem: { width: "30%", alignItems: "center", margin: 5, padding: 10 },
-  badgeLocked: { opacity: 0.6 },
+  badgeItem: { width: "30%", alignItems: "center", margin: 5, padding: 8 },
+  badgeLocked: { opacity: 0.65 },
   badgeCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 5,
     elevation: 2,
   },
   badgeTitle: {
-    fontSize: 11,
+    fontSize: 10,
     textAlign: "center",
     color: "#444",
     fontWeight: "bold",
+    minHeight: 28,
   },
+  miniBar: {
+    width: "90%",
+    height: 4,
+    backgroundColor: "#eee",
+    borderRadius: 2,
+    marginTop: 4,
+    overflow: "hidden",
+  },
+  miniBarFill: { height: "100%", borderRadius: 2 },
+  badgeProgress: { fontSize: 9, color: "#888", marginTop: 2 },
 
-  // Modals Communs
+  aboutSection: { marginHorizontal: 20, marginTop: 25 },
+  aboutCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 14,
+    borderRadius: 18,
+    elevation: 3,
+  },
+  revoBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#e3f2fd",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  revoTitle: { fontSize: 16, fontWeight: "bold", color: "#006994" },
+  revoSub: { fontSize: 12, color: "#666", marginTop: 2 },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -683,25 +796,34 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   closeButtonText: { color: "#333", fontWeight: "bold" },
+  nameInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    padding: 10,
+    width: "100%",
+    fontSize: 16,
+    textAlign: "center",
+  },
 
-  // Modal Avatar
   avatarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 15,
+    gap: 12,
   },
   avatarOption: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
     elevation: 3,
+    borderWidth: 3,
+    borderColor: "transparent",
   },
-  avatarSelected: { borderWidth: 3, borderColor: "#000" },
+  avatarSelected: { borderColor: "#006994" },
 
-  // Modal Buddy
   buddyList: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -719,7 +841,6 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
   },
 
-  // Modal Badge Detail
   badgeCircleLarge: {
     width: 100,
     height: 100,

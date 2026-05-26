@@ -1,4 +1,3 @@
-// app/constants/MarineData.ts
 
 export const OCEAN_NAMES = {
   ATLANTIQUE: "Atlantique",
@@ -24,7 +23,6 @@ export const ENCYCLOPEDIA_DATA: Record<
     image: any;
     habitats: string[];
     family: FamilyType;
-    groupe: GroupType;
     rarity: RarityType;
   }
 > = {
@@ -34,12 +32,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "4 à 14 mètres",
     danger: "🟢 Inoffensif",
     depth: "Surface - 1900m",
-    image: require("../assets/images/animals/requin_baleine.png"),
+    image: "../assets/images/animals/requin_baleine.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -50,12 +48,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 5 mètres",
     danger: "🔴 Potentiellement dangereux",
     depth: "0 - 350m",
-    image: require("../assets/images/animals/requin_tigre.png"),
+    image: "../assets/images/animals/requin_tigre.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -66,12 +64,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 6 mètres",
     danger: "🟠 Respecter une distance",
     depth: "0 - 275m",
-    image: require("../assets/images/animals/requin_marteau.png"),
+    image: "../assets/images/animals/requin_marteau.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.ROUGE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Mer Rouge,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -82,12 +80,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "4 à 6 mètres",
     danger: "🔴 Potentiellement dangereux",
     depth: "0 - 1200m",
-    image: require("../assets/images/animals/grand_requin_blanc.png"),
+    image: "../assets/images/animals/grand_requin_blanc.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.MEDITERRANEE,
+      Pacifique,
+      Océan Atlantique,
+      Océan Indien,
+      Méditerranée,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -98,12 +96,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.2 à 1.6 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 75m",
-    image: require("../assets/images/animals/requin_pointe_noire.png"),
+    image: "../assets/images/animals/requin_pointe_noire.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ROUGE,
-      OCEAN_NAMES.ANDAMAN,
+      Pacifique,
+      Océan Indien,
+      Mer Rouge,
+      Mer d'Andaman,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -115,11 +113,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 5 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 500m",
-    image: require("../assets/images/animals/requin_renard.png"),
+    image: "../assets/images/animals/requin_renard.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.INDIEN,
+      Pacifique,
+      Océan Atlantique,
+      Océan Indien,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -130,11 +128,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2 à 3 mètres",
     danger: "🟢 Inoffensif",
     depth: "1 - 75m",
-    image: require("../assets/images/animals/requin_nourrice.png"),
+    image: "../assets/images/animals/requin_nourrice.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.PACIFIQUE,
+      Océan Atlantique,
+      Caraïbes,
+      Pacifique,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -146,11 +144,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 7 mètres (envergure)",
     danger: "🟢 Inoffensif",
     depth: "0 - 1000m",
-    image: require("../assets/images/animals/raie_manta.png"),
+    image: "../assets/images/animals/raie_manta.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
     ],
     family: "Raie",
     groupe: "Poissons",
@@ -161,12 +159,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 3 mètres (envergure)",
     danger: "🟢 Inoffensif",
     depth: "1 - 80m",
-    image: require("../assets/images/animals/raie_aigle.png"),
+    image: "../assets/images/animals/raie_aigle.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
     ],
     family: "Raie",
     groupe: "Poissons",
@@ -177,12 +175,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 2 mètres",
     danger: "🟠 Venimeux (Défensif)",
     depth: "1 - 60m",
-    image: require("../assets/images/animals/raie_pastenague.png"),
+    image: "../assets/images/animals/raie_pastenague.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Méditerranée,
+      Caraïbes,
+      Océan Indien,
     ],
     family: "Raie",
     groupe: "Poissons",
@@ -195,14 +193,14 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2 à 4 mètres",
     danger: "🟢 Inoffensif",
     depth: "Surface - 30m",
-    image: require("../assets/images/animals/grand_dauphin.png"),
+    image: "../assets/images/animals/grand_dauphin.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.ROUGE,
-      OCEAN_NAMES.CARAIBES,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Méditerranée,
+      Mer Rouge,
+      Caraïbes,
     ],
     family: "Cétacé",
     groupe: "Mammifères Marins",
@@ -213,12 +211,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "12 à 16 mètres",
     danger: "🟢 Inoffensif",
     depth: "Surface - 200m",
-    image: require("../assets/images/animals/baleine_a_bosse.png"),
+    image: "../assets/images/animals/baleine_a_bosse.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.ARCTIQUE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Arctique,
     ],
     family: "Cétacé",
     groupe: "Mammifères Marins",
@@ -229,12 +227,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "24 à 30 mètres",
     danger: "🟢 Inoffensif",
     depth: "Surface - 500m",
-    image: require("../assets/images/animals/baleine_bleue.png"),
+    image: "../assets/images/animals/baleine_bleue.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ARCTIQUE,
+      Pacifique,
+      Océan Atlantique,
+      Océan Indien,
+      Arctique,
     ],
     family: "Cétacé",
     groupe: "Mammifères Marins",
@@ -245,13 +243,13 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "6 à 8 mètres",
     danger: "🟠 Respecter une distance",
     depth: "0 - 1000m",
-    image: require("../assets/images/animals/orque.png"),
+    image: "../assets/images/animals/orque.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.ARCTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Arctique,
+      Méditerranée,
     ],
     family: "Cétacé",
     groupe: "Mammifères Marins",
@@ -262,8 +260,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "4 à 5 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 1500m",
-    image: require("../assets/images/animals/narval.png"),
-    habitats: [OCEAN_NAMES.ARCTIQUE],
+    image: "../assets/images/animals/narval.png",
+    habitats: [Arctique],
     family: "Cétacé",
     groupe: "Mammifères Marins",
     rarity: 3,
@@ -274,11 +272,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 18 mètres",
     danger: "🟠 Respecter une distance",
     depth: "Surface - 3000m",
-    image: require("../assets/images/animals/cachalot.png"),
+    image: "../assets/images/animals/cachalot.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     family: "Cétacé",
     groupe: "Mammifères Marins",
@@ -289,11 +287,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.5 à 2 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 200m",
-    image: require("../assets/images/animals/marsouin.png"),
+    image: "../assets/images/animals/marsouin.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ARCTIQUE,
+      Océan Atlantique,
+      Pacifique,
+      Arctique,
     ],
     family: "Cétacé",
     groupe: "Mammifères Marins",
@@ -304,8 +302,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2.5 à 3 mètres",
     danger: "🟢 Inoffensif",
     depth: "1 - 10m",
-    image: require("../assets/images/animals/dugong.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/dugong.png",
+    habitats: [Océan Indien, Pacifique, Mer Rouge],
     family: "Sirénien",
     groupe: "Mammifères Marins",
     rarity: 2,
@@ -315,11 +313,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 4 mètres",
     danger: "🟢 Inoffensif",
     depth: "1 - 5m",
-    image: require("../assets/images/animals/lamantin.png"),
+    image: "../assets/images/animals/lamantin.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.GOLFE_MEXIQUE,
+      Océan Atlantique,
+      Caraïbes,
+      Golfe du Mexique,
     ],
     family: "Sirénien",
     groupe: "Mammifères Marins",
@@ -332,13 +330,13 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "80 cm à 1.5 m",
     danger: "🟢 Inoffensif",
     depth: "Surface - 20m",
-    image: require("../assets/images/animals/tortue_verte.png"),
+    image: "../assets/images/animals/tortue_verte.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.MEDITERRANEE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
+      Méditerranée,
     ],
     family: "Tortue",
     groupe: "Reptiles",
@@ -349,13 +347,13 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "60 à 90 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/tortue_imbriquee.png"),
+    image: "../assets/images/animals/tortue_imbriquee.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.ROUGE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
+      Mer Rouge,
     ],
     family: "Tortue",
     groupe: "Reptiles",
@@ -366,11 +364,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.8 à 2.2 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 1200m",
-    image: require("../assets/images/animals/tortue_luth.png"),
+    image: "../assets/images/animals/tortue_luth.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     family: "Tortue",
     groupe: "Reptiles",
@@ -381,11 +379,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "90 cm à 1.2 m",
     danger: "🟢 Inoffensif",
     depth: "0 - 100m",
-    image: require("../assets/images/animals/tortue_caouanne.png"),
+    image: "../assets/images/animals/tortue_caouanne.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Méditerranée,
+      Océan Indien,
     ],
     family: "Tortue",
     groupe: "Reptiles",
@@ -398,12 +396,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "7 à 15 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 15m",
-    image: require("../assets/images/animals/poisson_clown.png"),
+    image: "../assets/images/animals/poisson_clown.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ROUGE,
-      OCEAN_NAMES.ANDAMAN,
+      Pacifique,
+      Océan Indien,
+      Mer Rouge,
+      Mer d'Andaman,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -414,13 +412,13 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "50 cm à 1.8 m",
     danger: "🟠 Morsure possible",
     depth: "0 - 100m",
-    image: require("../assets/images/animals/barracuda.png"),
+    image: "../assets/images/animals/barracuda.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.MEDITERRANEE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
+      Méditerranée,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -431,14 +429,14 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 2.5 mètres",
     danger: "🟠 Morsure douloureuse",
     depth: "0 - 50m",
-    image: require("../assets/images/animals/murene.png"),
+    image: "../assets/images/animals/murene.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.ROUGE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Caraïbes,
+      Méditerranée,
+      Mer Rouge,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -449,8 +447,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 1.5 mètre",
     danger: "🟢 Inoffensif",
     depth: "0 - 600m",
-    image: require("../assets/images/animals/anguille.png"),
-    habitats: [OCEAN_NAMES.ATLANTIQUE, OCEAN_NAMES.MEDITERRANEE],
+    image: "../assets/images/animals/anguille.png",
+    habitats: [Océan Atlantique, Méditerranée],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 1,
@@ -460,12 +458,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 45 cm",
     danger: "🔴 Venimeux",
     depth: "1 - 50m",
-    image: require("../assets/images/animals/poisson_lion.png"),
+    image: "../assets/images/animals/poisson_lion.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ROUGE,
-      OCEAN_NAMES.CARAIBES,
+      Pacifique,
+      Océan Indien,
+      Mer Rouge,
+      Caraïbes,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -476,8 +474,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 2.3 mètres",
     danger: "🟢 Inoffensif",
     depth: "1 - 60m",
-    image: require("../assets/images/animals/napoleon.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/napoleon.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -487,8 +485,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2 à 3 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 1000m",
-    image: require("../assets/images/animals/thon_rouge.png"),
-    habitats: [OCEAN_NAMES.ATLANTIQUE, OCEAN_NAMES.MEDITERRANEE],
+    image: "../assets/images/animals/thon_rouge.png",
+    habitats: [Océan Atlantique, Méditerranée],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -498,12 +496,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 4.5 mètres",
     danger: "🟠 Danger si acculé",
     depth: "0 - 800m",
-    image: require("../assets/images/animals/espadon.png"),
+    image: "../assets/images/animals/espadon.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.MEDITERRANEE,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
+      Méditerranée,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -514,11 +512,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 2.5 mètres",
     danger: "🟢 Inoffensif",
     depth: "5 - 150m",
-    image: require("../assets/images/animals/merou.png"),
+    image: "../assets/images/animals/merou.png",
     habitats: [
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.ROUGE,
+      Méditerranée,
+      Océan Atlantique,
+      Mer Rouge,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -529,12 +527,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 70 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/poisson_perroquet.png"),
+    image: "../assets/images/animals/poisson_perroquet.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.ROUGE,
+      Pacifique,
+      Océan Indien,
+      Caraïbes,
+      Mer Rouge,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -546,11 +544,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2 à 3 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 600m",
-    image: require("../assets/images/animals/poisson_lune.png"),
+    image: "../assets/images/animals/poisson_lune.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
+      Océan Atlantique,
+      Pacifique,
+      Méditerranée,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -561,8 +559,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 40 cm",
     danger: "🔴 Très Venimeux",
     depth: "0 - 20m",
-    image: require("../assets/images/animals/poisson_pierre.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/poisson_pierre.png",
+    habitats: [Océan Indien, Pacifique, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -572,8 +570,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 mètre",
     danger: "🟢 Inoffensif",
     depth: "1 - 20m",
-    image: require("../assets/images/animals/murene_ruban.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/murene_ruban.png",
+    habitats: [Pacifique, Océan Indien],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -583,12 +581,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2 à 15 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/hippocampe.png"),
+    image: "../assets/images/animals/hippocampe.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Méditerranée,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -600,12 +598,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "Variable",
     danger: "🟢 Inoffensif",
     depth: "0 - 200m",
-    image: require("../assets/images/animals/pieuvre.png"),
+    image: "../assets/images/animals/pieuvre.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
+      Pacifique,
+      Océan Indien,
+      Océan Atlantique,
+      Méditerranée,
     ],
     family: "Céphalopode",
     groupe: "Mollusques",
@@ -617,11 +615,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 50 cm",
     danger: "🟢 Inoffensif",
     depth: "0 - 150m",
-    image: require("../assets/images/animals/seiche.png"),
+    image: "../assets/images/animals/seiche.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Méditerranée,
+      Océan Indien,
     ],
     family: "Céphalopode",
     groupe: "Mollusques",
@@ -632,11 +630,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 60 cm",
     danger: "🟢 Inoffensif",
     depth: "0 - 500m",
-    image: require("../assets/images/animals/calamar.png"),
+    image: "../assets/images/animals/calamar.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
+      Océan Atlantique,
+      Pacifique,
+      Méditerranée,
     ],
     family: "Céphalopode",
     groupe: "Mollusques",
@@ -648,8 +646,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "10 à 13 mètres",
     danger: "🟠 Potentiellement dangereux",
     depth: "300 - 1000m",
-    image: require("../assets/images/animals/calamar_geant.png"),
-    habitats: [OCEAN_NAMES.ATLANTIQUE, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/calamar_geant.png",
+    habitats: [Océan Atlantique, Pacifique],
     family: "Céphalopode",
     groupe: "Mollusques",
     rarity: 3,
@@ -659,8 +657,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 25 cm",
     danger: "🟢 Inoffensif",
     depth: "100 - 600m",
-    image: require("../assets/images/animals/nautile.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/nautile.png",
+    habitats: [Pacifique, Océan Indien],
     family: "Céphalopode",
     groupe: "Mollusques",
     rarity: 2,
@@ -670,8 +668,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 30 cm",
     danger: "🔴 Mortel",
     depth: "0 - 10m",
-    image: require("../assets/images/animals/meduse_boite.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/meduse_boite.png",
+    habitats: [Pacifique, Océan Indien],
     family: "Méduse",
     groupe: "Cnidaires",
     rarity: 3,
@@ -683,8 +681,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "6 à 10 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 20m",
-    image: require("../assets/images/animals/poisson_mandarin.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ANDAMAN, OCEAN_NAMES.CHINE],
+    image: "../assets/images/animals/poisson_mandarin.png",
+    habitats: [Pacifique, Mer d'Andaman, Mer de Chine],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -695,8 +693,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "10 à 20 cm",
     danger: "🔴 Mortel",
     depth: "0 - 20m",
-    image: require("../assets/images/animals/pieuvre_anneaux_bleus.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/pieuvre_anneaux_bleus.png",
+    habitats: [Pacifique, Océan Indien],
     family: "Céphalopode",
     groupe: "Mollusques",
     rarity: 3,
@@ -706,8 +704,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "Jusqu'à 1.2 mètre",
     danger: "🟢 Inoffensif",
     depth: "1 - 20m",
-    image: require("../assets/images/animals/benitier_geant.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/benitier_geant.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     family: "Bivalve",
     groupe: "Mollusques",
     rarity: 2,
@@ -718,12 +716,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 15 cm",
     danger: "🟢 Inoffensif",
     depth: "0 - 50m",
-    image: require("../assets/images/animals/nudibranche.png"),
+    image: "../assets/images/animals/nudibranche.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.ATLANTIQUE,
+      Pacifique,
+      Océan Indien,
+      Méditerranée,
+      Océan Atlantique,
     ],
     family: "Gastéropode",
     groupe: "Mollusques",
@@ -735,8 +733,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 30 cm",
     danger: "🟠 Attention aux épines",
     depth: "2 - 40m",
-    image: require("../assets/images/animals/chirurgien_bleu.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/chirurgien_bleu.png",
+    habitats: [Pacifique, Océan Indien],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 1,
@@ -747,8 +745,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "40 à 75 cm",
     danger: "🟠 Territorial (Morsure)",
     depth: "1 - 50m",
-    image: require("../assets/images/animals/baliste_titan.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/baliste_titan.png",
+    habitats: [Océan Indien, Pacifique, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -759,8 +757,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "5 à 30 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 100m",
-    image: require("../assets/images/animals/poisson_grenouille.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.CARAIBES],
+    image: "../assets/images/animals/poisson_grenouille.png",
+    habitats: [Pacifique, Océan Indien, Caraïbes],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 3,
@@ -771,8 +769,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 35 cm",
     danger: "🟢 Inoffensif",
     depth: "4 - 30m",
-    image: require("../assets/images/animals/dragon_mer_feuillu.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/dragon_mer_feuillu.png",
+    habitats: [Océan Indien, Pacifique],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 3,
@@ -783,8 +781,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 70 cm",
     danger: "🟠 Venimeux (Dard)",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/raie_pastenague.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/raie_pastenague.png",
+    habitats: [Océan Indien, Pacifique, Mer Rouge],
     family: "Raie",
     groupe: "Poissons",
     rarity: 1,
@@ -795,8 +793,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.5 à 2 cm",
     danger: "🟢 Inoffensif",
     depth: "10 - 40m",
-    image: require("../assets/images/animals/hippocampe_pygmee.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.CHINE],
+    image: "../assets/images/animals/hippocampe_pygmee.png",
+    habitats: [Pacifique, Mer de Chine],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 3,
@@ -807,8 +805,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 45 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 280m",
-    image: require("../assets/images/animals/poisson_coffre_jaune.jpg"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/poisson_coffre_jaune.jpg",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -819,11 +817,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "40 à 80 cm",
     danger: "🟢 Inoffensif",
     depth: "2 - 100m",
-    image: require("../assets/images/animals/poisson_trompette.png"),
+    image: "../assets/images/animals/poisson_trompette.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.PACIFIQUE,
+      Océan Atlantique,
+      Caraïbes,
+      Pacifique,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -837,8 +835,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 50m",
     groupe: "Poissons",
     family: "Poisson osseux",
-    image: require("../assets/images/animals/poisson_scorpion_barbu.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/poisson_scorpion_barbu.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 2,
   },
   "Anguille Jardinière": {
@@ -847,8 +845,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 40 cm",
     danger: "🟢 Inoffensif",
     depth: "5 - 45m",
-    image: require("../assets/images/animals/anguille_jardiniere.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/anguille_jardiniere.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -859,8 +857,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "10 à 14 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/labre_nettoyeur.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/labre_nettoyeur.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 1,
@@ -871,11 +869,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 90 cm",
     danger: "🟢 Inoffensif",
     depth: "0 - 100m",
-    image: require("../assets/images/animals/remora.png"),
+    image: "../assets/images/animals/remora.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -887,11 +885,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 cm (flotteur) / 30m (filaments)",
     danger: "🔴 Très Urticant",
     depth: "Surface",
-    image: require("../assets/images/animals/galere_portugaise.png"),
+    image: "../assets/images/animals/galere_portugaise.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     family: "Méduse",
     groupe: "Cnidaires",
@@ -903,8 +901,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 25 cm",
     danger: "🟢 Inoffensif",
     depth: "2 - 50m",
-    image: require("../assets/images/animals/poisson_ange_duc.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/poisson_ange_duc.png",
+    habitats: [Océan Indien, Pacifique, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -915,11 +913,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 30 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 100m",
-    image: require("../assets/images/animals/poisson_ecureuil.png"),
+    image: "../assets/images/animals/poisson_ecureuil.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.PACIFIQUE,
+      Océan Atlantique,
+      Caraïbes,
+      Pacifique,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -931,8 +929,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 25 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/girelle_paon.png"),
-    habitats: [OCEAN_NAMES.MEDITERRANEE, OCEAN_NAMES.ATLANTIQUE],
+    image: "../assets/images/animals/girelle_paon.png",
+    habitats: [Méditerranée, Océan Atlantique],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 1,
@@ -944,8 +942,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 5 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 800m",
-    image: require("../assets/images/animals/beluga.png"),
-    habitats: [OCEAN_NAMES.ARCTIQUE],
+    image: "../assets/images/animals/beluga.png",
+    habitats: [Arctique],
     family: "Cétacé",
     groupe: "Mammifères Marins",
     rarity: 3,
@@ -956,8 +954,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "4 à 7 mètres",
     danger: "🟠 Respecter une distance",
     depth: "0 - 2200m",
-    image: require("../assets/images/animals/requin_du_groenland.png"),
-    habitats: [OCEAN_NAMES.ARCTIQUE, OCEAN_NAMES.ATLANTIQUE],
+    image: "../assets/images/animals/requin_du_groenland.png",
+    habitats: [Arctique, Océan Atlantique],
     family: "Requin",
     groupe: "Poissons",
     rarity: 3,
@@ -970,11 +968,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 60 cm",
     danger: "🟠 Morsure puissante",
     depth: "1000 - 4000m",
-    image: require("../assets/images/animals/baudroie_abyssale.png"),
+    image: "../assets/images/animals/baudroie_abyssale.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -986,11 +984,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 4 mètres",
     danger: "🟢 Inoffensif",
     depth: "100 - 1300m",
-    image: require("../assets/images/animals/requin_lutin.png"),
+    image: "../assets/images/animals/requin_lutin.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.INDIEN,
+      Pacifique,
+      Océan Atlantique,
+      Océan Indien,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -1002,8 +1000,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 cm",
     danger: "🟢 Inoffensif",
     depth: "500 - 1000m",
-    image: require("../assets/images/animals/macropinna_microstoma.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/macropinna_microstoma.png",
+    habitats: [Pacifique],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 3,
@@ -1016,11 +1014,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 5 mètres",
     danger: "🟠 Danger si acculé",
     depth: "0 - 200m",
-    image: require("../assets/images/animals/marlin_bleu.png"),
+    image: "../assets/images/animals/marlin_bleu.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -1032,12 +1030,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "2.5 à 4 mètres",
     danger: "🔴 Potentiellement dangereux",
     depth: "0 - 500m",
-    image: require("../assets/images/animals/requin_mako.png"),
+    image: "../assets/images/animals/requin_mako.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.MEDITERRANEE,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
+      Méditerranée,
     ],
     family: "Requin",
     groupe: "Poissons",
@@ -1049,11 +1047,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.5 à 2.5 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 30m",
-    image: require("../assets/images/animals/tarpon.png"),
+    image: "../assets/images/animals/tarpon.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.GOLFE_MEXIQUE,
+      Océan Atlantique,
+      Caraïbes,
+      Golfe du Mexique,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -1067,8 +1065,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "25 à 30 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 10m",
-    image: require("../assets/images/animals/baliste_picasso.png"),
-    habitats: [OCEAN_NAMES.ROUGE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/baliste_picasso.png",
+    habitats: [Mer Rouge, Océan Indien, Pacifique],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 1,
@@ -1079,8 +1077,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "30 à 50 cm",
     danger: "🔴 Venimeux (Ingestion)",
     depth: "1 - 50m",
-    image: require("../assets/images/animals/poisson_ballon.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/poisson_ballon.png",
+    habitats: [Océan Indien, Pacifique, Mer Rouge],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 1,
@@ -1090,8 +1088,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "10 à 40 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 50m",
-    image: require("../assets/images/animals/poisson_vache.png"),
-    habitats: [OCEAN_NAMES.CARAIBES, OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/poisson_vache.png",
+    habitats: [Caraïbes, Océan Indien, Pacifique],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -1102,8 +1100,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "20 à 40 cm",
     danger: "🟢 Inoffensif",
     depth: "3 - 70m",
-    image: require("../assets/images/animals/poisson_chauve_souris.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.CARAIBES],
+    image: "../assets/images/animals/poisson_chauve_souris.png",
+    habitats: [Pacifique, Océan Indien, Caraïbes],
     family: "Poisson osseux",
     groupe: "Poissons",
     rarity: 2,
@@ -1114,8 +1112,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.8 à 2.2 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 50m",
-    image: require("../assets/images/animals/dauphin_long_bec.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/dauphin_long_bec.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     family: "Cétacé",
     groupe: "Mammifères Marins",
     rarity: 2,
@@ -1127,12 +1125,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1.5 à 2.5 mètres",
     danger: "🟢 Inoffensif",
     depth: "1 - 100m",
-    image: require("../assets/images/animals/raie_guitare.png"),
+    image: "../assets/images/animals/raie_guitare.png",
     habitats: [
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.ROUGE,
+      Océan Indien,
+      Pacifique,
+      Méditerranée,
+      Mer Rouge,
     ],
     family: "Raie",
     groupe: "Poissons",
@@ -1144,8 +1142,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "10 à 30 cm",
     danger: "🟠 Coup de pattes puissant",
     depth: "5 - 40m",
-    image: require("../assets/images/animals/squille.png"),
-    habitats: [OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/squille.png",
+    habitats: [Océan Indien, Pacifique],
     family: "Crustacé",
     groupe: "Arthropodes",
     rarity: 2,
@@ -1157,8 +1155,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "3 à 5 mètres",
     danger: "🟢 Inoffensif",
     depth: "0 - 1500m",
-    image: require("../assets/images/animals/pieuvre_geante_pacifique.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/pieuvre_geante_pacifique.png",
+    habitats: [Pacifique],
     family: "Céphalopode",
     groupe: "Mollusques",
     rarity: 3,
@@ -1169,8 +1167,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 25 cm",
     danger: "🟢 Inoffensif",
     depth: "0 - 200m",
-    image: require("../assets/images/animals/etoile_de_mer_pourpre.png"),
-    habitats: [OCEAN_NAMES.ATLANTIQUE, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/etoile_de_mer_pourpre.png",
+    habitats: [Océan Atlantique, Pacifique],
     family: "Étoile de mer",
     groupe: "Échinodermes",
     rarity: 1,
@@ -1181,8 +1179,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "Jusqu'à 1.8 mètre",
     danger: "🟢 Inoffensif",
     depth: "1 - 30m",
-    image: require("../assets/images/animals/corail_cerveau.png"),
-    habitats: [OCEAN_NAMES.CARAIBES, OCEAN_NAMES.INDIEN, OCEAN_NAMES.PACIFIQUE],
+    image: "../assets/images/animals/corail_cerveau.png",
+    habitats: [Caraïbes, Océan Indien, Pacifique],
     family: "Corail",
     groupe: "Cnidaires",
     rarity: 1,
@@ -1193,8 +1191,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "1 à 2 mètres",
     danger: "🟢 Inoffensif",
     depth: "10 - 50m",
-    image: require("../assets/images/animals/eponge_baril.png"),
-    habitats: [OCEAN_NAMES.CARAIBES, OCEAN_NAMES.ATLANTIQUE],
+    image: "../assets/images/animals/eponge_baril.png",
+    habitats: [Caraïbes, Océan Atlantique],
     family: "Spongiaire",
     groupe: "Spongiaires",
     rarity: 1,
@@ -1205,12 +1203,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     taille: "15 à 20 cm",
     danger: "🟢 Inoffensif",
     depth: "1 - 40m",
-    image: require("../assets/images/animals/poisson_papillon.png"),
+    image: "../assets/images/animals/poisson_papillon.png",
     habitats: [
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.ROUGE,
+      Océan Indien,
+      Pacifique,
+      Caraïbes,
+      Mer Rouge,
     ],
     family: "Poisson osseux",
     groupe: "Poissons",
@@ -1225,8 +1223,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "0 - 30m",
     groupe: "Reptiles",
     family: "Serpent",
-    image: require("../assets/images/animals/tricot_raye.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.CHINE],
+    image: "../assets/images/animals/tricot_raye.png",
+    habitats: [Pacifique, Océan Indien, Mer de Chine],
     rarity: 2,
   },
 
@@ -1239,8 +1237,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 20m",
     groupe: "Cnidaires",
     family: "Anémone",
-    image: require("../assets/images/animals/anemone_magnifique.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/anemone_magnifique.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 1,
   },
   "Méduse Aurélie": {
@@ -1251,11 +1249,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "0 - 15m",
     groupe: "Cnidaires",
     family: "Méduse",
-    image: require("../assets/images/animals/meduse_aurelie.png"),
+    image: "../assets/images/animals/meduse_aurelie.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
+      Océan Atlantique,
+      Pacifique,
+      Méditerranée,
     ],
     rarity: 1,
   },
@@ -1267,8 +1265,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 40m",
     groupe: "Cnidaires",
     family: "Corail",
-    image: require("../assets/images/animals/corail_de_feu.png"),
-    habitats: [OCEAN_NAMES.CARAIBES, OCEAN_NAMES.ROUGE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/corail_de_feu.png",
+    habitats: [Caraïbes, Mer Rouge, Océan Indien],
     rarity: 1,
   },
 
@@ -1281,12 +1279,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 50m",
     groupe: "Échinodermes",
     family: "Oursin",
-    image: require("../assets/images/animals/oursin_diademe.png"),
+    image: "../assets/images/animals/oursin_diademe.png",
     habitats: [
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ROUGE,
-      OCEAN_NAMES.CARAIBES,
+      Océan Indien,
+      Pacifique,
+      Mer Rouge,
+      Caraïbes,
     ],
     rarity: 1,
   },
@@ -1298,8 +1296,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 30m",
     groupe: "Échinodermes",
     family: "Étoile de mer",
-    image: require("../assets/images/animals/etoile_de_mer_couronne_epines.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/etoile_de_mer_couronne_epines.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 2,
   },
   "Holothurie Ananas": {
@@ -1310,8 +1308,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "2 - 30m",
     groupe: "Échinodermes",
     family: "Holothurie",
-    image: require("../assets/images/animals/holothurie_ananas.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/holothurie_ananas.png",
+    habitats: [Pacifique, Océan Indien],
     rarity: 2,
   },
 
@@ -1324,12 +1322,12 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "2 - 40m",
     groupe: "Arthropodes",
     family: "Crustacé",
-    image: require("../assets/images/animals/crevette_nettoyeuse.png"),
+    image: "../assets/images/animals/crevette_nettoyeuse.png",
     habitats: [
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.CARAIBES,
-      OCEAN_NAMES.ROUGE,
+      Pacifique,
+      Océan Indien,
+      Caraïbes,
+      Mer Rouge,
     ],
     rarity: 1,
   },
@@ -1343,8 +1341,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 20m",
     groupe: "Mollusques",
     family: "Gastéropode",
-    image: require("../assets/images/animals/cone_geographe.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/cone_geographe.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 3,
   },
   "Nudibranche Chromodoris": {
@@ -1355,8 +1353,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "5 - 30m",
     groupe: "Mollusques",
     family: "Gastéropode",
-    image: require("../assets/images/animals/nudibranche_chromodoris.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN],
+    image: "../assets/images/animals/nudibranche_chromodoris.png",
+    habitats: [Pacifique, Océan Indien],
     rarity: 2,
   },
   "Porcelaine (Cypraea)": {
@@ -1367,8 +1365,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "0 - 20m",
     groupe: "Mollusques",
     family: "Gastéropode",
-    image: require("../assets/images/animals/porcelaine.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/porcelaine.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 2,
   },
 
@@ -1381,8 +1379,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "10 - 50m",
     groupe: "Poissons",
     family: "Poisson osseux",
-    image: require("../assets/images/animals/poisson_faucon_long_nez.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/poisson_faucon_long_nez.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 2,
   },
   "Poisson-Lime": {
@@ -1393,11 +1391,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 30m",
     groupe: "Poissons",
     family: "Poisson osseux",
-    image: require("../assets/images/animals/poisson_lime.png"),
+    image: "../assets/images/animals/poisson_lime.png",
     habitats: [
-      OCEAN_NAMES.INDIEN,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.ATLANTIQUE,
+      Océan Indien,
+      Pacifique,
+      Océan Atlantique,
     ],
     rarity: 2,
   },
@@ -1411,8 +1409,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "0 - 300m",
     groupe: "Mammifères Marins",
     family: "Pinnipède",
-    image: require("../assets/images/animals/leopard_de_mer.png"),
-    habitats: [OCEAN_NAMES.ARCTIQUE], // Techniquement Océan Austral/Antarctique
+    image: "../assets/images/animals/leopard_de_mer.png",
+    habitats: [Arctique], // Techniquement Océan Austral/Antarctique
     rarity: 3,
   },
   "Manchot Papou": {
@@ -1423,11 +1421,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "0 - 150m",
     groupe: "Mammifères Marins", // Classification simplifiée pour l'app, ou "Oiseaux"
     family: "Oiseau marin",
-    image: require("../assets/images/animals/manchot_papou.png"),
+    image: "../assets/images/animals/manchot_papou.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.PACIFIQUE,
-      OCEAN_NAMES.INDIEN,
+      Océan Atlantique,
+      Pacifique,
+      Océan Indien,
     ],
     rarity: 2,
   },
@@ -1439,11 +1437,11 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "0 - 10m",
     groupe: "Poissons", // À classer dans "Oiseaux Marins" si tu crées le groupe
     family: "Oiseau marin",
-    image: require("../assets/images/animals/grand_cormoran.png"),
+    image: "../assets/images/animals/grand_cormoran.png",
     habitats: [
-      OCEAN_NAMES.ATLANTIQUE,
-      OCEAN_NAMES.MEDITERRANEE,
-      OCEAN_NAMES.CHINE,
+      Océan Atlantique,
+      Méditerranée,
+      Mer de Chine,
     ],
     rarity: 1,
   },
@@ -1455,8 +1453,8 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 30m",
     groupe: "Mollusques",
     family: "Gastéropode",
-    image: require("../assets/images/animals/triton_geant.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/triton_geant.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 3,
   },
   "Oursin Crayon": {
@@ -1467,14 +1465,39 @@ export const ENCYCLOPEDIA_DATA: Record<
     depth: "1 - 25m",
     groupe: "Échinodermes",
     family: "Oursin",
-    image: require("../assets/images/animals/oursin_crayon.png"),
-    habitats: [OCEAN_NAMES.PACIFIQUE, OCEAN_NAMES.INDIEN, OCEAN_NAMES.ROUGE],
+    image: "../assets/images/animals/oursin_crayon.png",
+    habitats: [Pacifique, Océan Indien, Mer Rouge],
     rarity: 2,
   },
 };
 
-// --- 2. GÉOGRAPHIE --- (dérivé automatiquement depuis COUNTRY_COORDINATES — source unique de vérité)
-// NB : défini plus bas, après COUNTRY_COORDINATES, pour éviter une référence avant déclaration.
+// --- 2. GÉOGRAPHIE ---
+export const GEOGRAPHY_DB: Record<string, string[]> = {
+  France: ["Atlantique", "Méditerranée"],
+  Espagne: ["Atlantique", "Méditerranée"],
+  Maldives: ["Océan Indien"],
+  Indonésie: ["Océan Indien", "Pacifique"],
+  Australie: ["Pacifique", "Océan Indien"],
+  Égypte: ["Mer Rouge"],
+  Mexique: ["Pacifique", "Caraïbes"],
+  Thaïlande: ["Mer d'Andaman", "Golfe de Thaïlande"],
+  USA: ["Atlantique", "Pacifique", "Golfe du Mexique"],
+  Japon: ["Pacifique"],
+  Brésil: ["Atlantique"],
+  Canada: ["Atlantique", "Pacifique", "Arctique"],
+  "La Réunion": ["Océan Indien"],
+  "Costa Rica": ["Pacifique", "Caraïbes"],
+  "Polynésie Française": ["Pacifique"],
+  "Afrique du Sud": ["Atlantique", "Océan Indien"],
+  Maurice: ["Océan Indien"],
+  Seychelles: ["Océan Indien"],
+  Colombie: ["Pacifique", "Caraïbes"],
+  Philippines: ["Pacifique", "Mer de Chine"],
+  Italie: ["Méditerranée"],
+  Grèce: ["Méditerranée"],
+  Guadeloupe: ["Caraïbes"],
+  Martinique: ["Caraïbes"],
+};
 
 // --- 3. INTERFACES ---
 export interface Observation {
@@ -1487,35 +1510,7 @@ export interface Observation {
   notes?: string;
   latitude?: number;
   longitude?: number;
-  tripId?: string; // NOUVEAU : Rattachement à un voyage
 }
-
-// --- VOYAGES (Storyboards) ---
-// Un voyage regroupe plusieurs observations sous une même histoire
-// (ex: "Mon voyage aux Philippines" du 12/03 au 25/03)
-export interface Trip {
-  id: string;
-  name: string; // Ex: "Voyage aux Philippines"
-  country: string; // Pays principal
-  startDate: string; // DD/MM/YYYY
-  endDate: string; // DD/MM/YYYY
-  coverPhoto?: string; // Photo de couverture (URI)
-  color: string; // Couleur d'accent du voyage
-  notes?: string;
-  createdAt: number; // timestamp pour le tri
-}
-
-// Palette de couleurs proposées pour les voyages (cohérente avec le thème bleu)
-export const TRIP_COLORS = [
-  "#006994", // Bleu marine principal
-  "#0288D1", // Bleu lagon
-  "#26A69A", // Turquoise
-  "#00838F", // Bleu canard
-  "#F57C00", // Corail / coucher de soleil
-  "#7E57C2", // Violet abyssal
-  "#43A047", // Vert algue
-  "#EC407A", // Rose poisson clown
-];
 // Le groupe large (Embranchement ou Classe selon l'importance)
 export type GroupType =
   | "Mammifères Marins"
@@ -1565,7 +1560,7 @@ export interface Animal {
   name: string;
   image: any;
   discovered: boolean;
-  description: string;
+  descriptionription: string;
   size: string;
   depth: string;
   danger?: string;
@@ -1583,7 +1578,7 @@ export const initialAnimals: Animal[] = Object.keys(ENCYCLOPEDIA_DATA).map(
       name: key,
       image: data.image,
       discovered: false,
-      description: data.description,
+      descriptionription: data.description,
       size: data.taille,
       depth: data.depth,
       danger: data.danger,
@@ -1601,261 +1596,252 @@ export const COUNTRY_COORDINATES: Record<
 > = {
   // --- EUROPE ---
   France: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 47.5, longitude: -3.0 }, // Bretagne
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 43.0, longitude: 6.2 }, // Port-Cros
+    [Océan Atlantique]: { latitude: 47.5, longitude: -3.0 }, // Bretagne
+    [Méditerranée]: { latitude: 43.0, longitude: 6.2 }, // Port-Cros
     Manche: { latitude: 49.5, longitude: -1.5 },
   },
   Espagne: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 43.0, longitude: -9.0 }, // Galice
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 39.5, longitude: 2.8 }, // Majorque
+    [Océan Atlantique]: { latitude: 43.0, longitude: -9.0 }, // Galice
+    [Méditerranée]: { latitude: 39.5, longitude: 2.8 }, // Majorque
     Canaries: { latitude: 28.0, longitude: -16.5 }, // Tenerife (Tech. Atlantique mais zone distincte)
   },
   Italie: {
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 41.2, longitude: 9.8 }, // Sardaigne/Elbe
+    [Méditerranée]: { latitude: 41.2, longitude: 9.8 }, // Sardaigne/Elbe
     Adriatique: { latitude: 42.0, longitude: 15.0 },
   },
   Portugal: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 37.0, longitude: -8.9 }, // Algarve
+    [Océan Atlantique]: { latitude: 37.0, longitude: -8.9 }, // Algarve
     Açores: { latitude: 37.7, longitude: -25.6 },
     Madère: { latitude: 32.6, longitude: -16.9 },
   },
-  Grèce: { [OCEAN_NAMES.MEDITERRANEE]: { latitude: 36.8, longitude: 25.0 } }, // Cyclades
-  Croatie: { [OCEAN_NAMES.MEDITERRANEE]: { latitude: 43.5, longitude: 16.0 } },
-  Malte: { [OCEAN_NAMES.MEDITERRANEE]: { latitude: 35.9, longitude: 14.4 } },
-  Chypre: { [OCEAN_NAMES.MEDITERRANEE]: { latitude: 34.9, longitude: 33.6 } },
+  Grèce: { [Méditerranée]: { latitude: 36.8, longitude: 25.0 } }, // Cyclades
+  Croatie: { [Méditerranée]: { latitude: 43.5, longitude: 16.0 } },
+  Malte: { [Méditerranée]: { latitude: 35.9, longitude: 14.4 } },
+  Chypre: { [Méditerranée]: { latitude: 34.9, longitude: 33.6 } },
   "Royaume-Uni": {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 50.1, longitude: -5.5 }, // Cornouailles
+    [Océan Atlantique]: { latitude: 50.1, longitude: -5.5 }, // Cornouailles
     "Mer du Nord": { latitude: 58.9, longitude: -3.0 }, // Scapa Flow
   },
-  Irlande: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 52.0, longitude: -10.5 } },
+  Irlande: { [Océan Atlantique]: { latitude: 52.0, longitude: -10.5 } },
   Norvège: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 60.3, longitude: 5.3 },
-    [OCEAN_NAMES.ARCTIQUE]: { latitude: 69.6, longitude: 18.9 }, // Tromsø (Orques)
+    [Océan Atlantique]: { latitude: 60.3, longitude: 5.3 },
+    [Arctique]: { latitude: 69.6, longitude: 18.9 }, // Tromsø (Orques)
   },
-  Islande: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 64.1, longitude: -21.9 } }, // Silfra
+  Islande: { [Océan Atlantique]: { latitude: 64.1, longitude: -21.9 } }, // Silfra
   Turquie: {
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 36.2, longitude: 29.6 }, // Kas
+    [Méditerranée]: { latitude: 36.2, longitude: 29.6 }, // Kas
     "Mer Égée": { latitude: 37.0, longitude: 27.4 }, // Bodrum
   },
   Monténégro: {
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 42.4, longitude: 18.6 },
+    [Méditerranée]: { latitude: 42.4, longitude: 18.6 },
   }, // Baie de Kotor
-  Albanie: { [OCEAN_NAMES.MEDITERRANEE]: { latitude: 40.1, longitude: 19.7 } }, // Saranda (Ionian)
-  Monaco: { [OCEAN_NAMES.MEDITERRANEE]: { latitude: 43.7, longitude: 7.4 } },
+  Albanie: { [Méditerranée]: { latitude: 40.1, longitude: 19.7 } }, // Saranda (Ionian)
+  Monaco: { [Méditerranée]: { latitude: 43.7, longitude: 7.4 } },
   Suède: { "Mer Baltique": { latitude: 59.0, longitude: 18.5 } }, // Épaves froide
   Danemark: { "Mer du Nord": { latitude: 56.0, longitude: 8.0 } },
   // --- AFRIQUE & MOYEN-ORIENT ---
   Maroc: {
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 35.8, longitude: -5.5 },
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 30.4, longitude: -9.6 }, // Agadir
+    [Méditerranée]: { latitude: 35.8, longitude: -5.5 },
+    [Océan Atlantique]: { latitude: 30.4, longitude: -9.6 }, // Agadir
   },
   "Sao Tomé-et-Principe": {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 0.3, longitude: 6.7 },
+    [Océan Atlantique]: { latitude: 0.3, longitude: 6.7 },
   },
-  Ghana: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 5.5, longitude: 0.0 } },
+  Ghana: { [Océan Atlantique]: { latitude: 5.5, longitude: 0.0 } },
   Égypte: {
-    [OCEAN_NAMES.ROUGE]: { latitude: 27.2, longitude: 33.8 }, // Hurghada/Marsa Alam
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 31.2, longitude: 29.9 },
+    [Mer Rouge]: { latitude: 27.2, longitude: 33.8 }, // Hurghada/Marsa Alam
+    [Méditerranée]: { latitude: 31.2, longitude: 29.9 },
   },
-  Soudan: { [OCEAN_NAMES.ROUGE]: { latitude: 19.6, longitude: 37.2 } },
-  Djibouti: { [OCEAN_NAMES.ROUGE]: { latitude: 11.6, longitude: 42.8 } }, // Requins Baleines
-  Oman: { [OCEAN_NAMES.INDIEN]: { latitude: 23.5, longitude: 58.5 } },
-  Jordanie: { [OCEAN_NAMES.ROUGE]: { latitude: 29.5, longitude: 34.9 } }, // Aqaba
+  Soudan: { [Mer Rouge]: { latitude: 19.6, longitude: 37.2 } },
+  Djibouti: { [Mer Rouge]: { latitude: 11.6, longitude: 42.8 } }, // Requins Baleines
+  Oman: { [Océan Indien]: { latitude: 23.5, longitude: 58.5 } },
+  Jordanie: { [Mer Rouge]: { latitude: 29.5, longitude: 34.9 } }, // Aqaba
   "Afrique du Sud": {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: -34.1, longitude: 18.4 }, // Cape Town
-    [OCEAN_NAMES.INDIEN]: { latitude: -30.0, longitude: 31.0 }, // Aliwal Shoal/Durban
+    [Océan Atlantique]: { latitude: -34.1, longitude: 18.4 }, // Cape Town
+    [Océan Indien]: { latitude: -30.0, longitude: 31.0 }, // Aliwal Shoal/Durban
   },
-  Mozambique: { [OCEAN_NAMES.INDIEN]: { latitude: -23.8, longitude: 35.5 } }, // Tofo
-  Tanzanie: { [OCEAN_NAMES.INDIEN]: { latitude: -6.1, longitude: 39.2 } }, // Zanzibar
-  Kenya: { [OCEAN_NAMES.INDIEN]: { latitude: -4.0, longitude: 39.7 } },
-  Madagascar: { [OCEAN_NAMES.INDIEN]: { latitude: -13.3, longitude: 48.2 } }, // Nosy Be
-  Maurice: { [OCEAN_NAMES.INDIEN]: { latitude: -20.3, longitude: 57.5 } },
-  Seychelles: { [OCEAN_NAMES.INDIEN]: { latitude: -4.6, longitude: 55.5 } },
+  Mozambique: { [Océan Indien]: { latitude: -23.8, longitude: 35.5 } }, // Tofo
+  Tanzanie: { [Océan Indien]: { latitude: -6.1, longitude: 39.2 } }, // Zanzibar
+  Kenya: { [Océan Indien]: { latitude: -4.0, longitude: 39.7 } },
+  Madagascar: { [Océan Indien]: { latitude: -13.3, longitude: 48.2 } }, // Nosy Be
+  Maurice: { [Océan Indien]: { latitude: -20.3, longitude: 57.5 } },
+  Seychelles: { [Océan Indien]: { latitude: -4.6, longitude: 55.5 } },
   "Cap-Vert": {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 16.6, longitude: -22.9 },
+    [Océan Atlantique]: { latitude: 16.6, longitude: -22.9 },
   },
-  Sénégal: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 14.7, longitude: -17.5 } },
+  Sénégal: { [Océan Atlantique]: { latitude: 14.7, longitude: -17.5 } },
   "Arabie Saoudite": {
-    [OCEAN_NAMES.ROUGE]: { latitude: 22.5, longitude: 38.9 }, // Jeddah/Farasan Banks
+    [Mer Rouge]: { latitude: 22.5, longitude: 38.9 }, // Jeddah/Farasan Banks
     "Golfe Persique": { latitude: 26.5, longitude: 50.5 },
   },
   Israël: {
-    [OCEAN_NAMES.ROUGE]: { latitude: 29.5, longitude: 34.9 }, // Eilat
-    [OCEAN_NAMES.MEDITERRANEE]: { latitude: 32.5, longitude: 34.8 },
+    [Mer Rouge]: { latitude: 29.5, longitude: 34.9 }, // Eilat
+    [Méditerranée]: { latitude: 32.5, longitude: 34.8 },
   },
   "Émirats Arabes Unis": {
-    [OCEAN_NAMES.INDIEN]: { latitude: 25.5, longitude: 56.4 }, // Fujairah (Golfe d'Oman)
+    [Océan Indien]: { latitude: 25.5, longitude: 56.4 }, // Fujairah (Golfe d'Oman)
     "Golfe Persique": { latitude: 25.0, longitude: 54.0 },
   },
   Qatar: { "Golfe Persique": { latitude: 25.3, longitude: 51.5 } },
   // --- ASIE ---
   Indonésie: {
-    [OCEAN_NAMES.INDIEN]: { latitude: -8.7, longitude: 115.5 }, // Bali/Nusa Penida
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -0.5, longitude: 130.5 }, // Raja Ampat
+    [Océan Indien]: { latitude: -8.7, longitude: 115.5 }, // Bali/Nusa Penida
+    [Pacifique]: { latitude: -0.5, longitude: 130.5 }, // Raja Ampat
     "Mer de Java": { latitude: -5.8, longitude: 110.4 }, // Karimunjawa
   },
-  Maldives: { [OCEAN_NAMES.INDIEN]: { latitude: 3.5, longitude: 73.0 } },
+  Maldives: { [Océan Indien]: { latitude: 3.5, longitude: 73.0 } },
   Thaïlande: {
-    [OCEAN_NAMES.ANDAMAN]: { latitude: 7.9, longitude: 98.3 }, // Phuket/Similan
+    [Mer d'Andaman]: { latitude: 7.9, longitude: 98.3 }, // Phuket/Similan
     "Golfe de Thaïlande": { latitude: 10.1, longitude: 99.9 }, // Koh Tao
   },
   Philippines: {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 9.6, longitude: 123.8 }, // Bohol/Visayas
-    [OCEAN_NAMES.CHINE]: { latitude: 11.2, longitude: 119.4 }, // Palawan
+    [Pacifique]: { latitude: 9.6, longitude: 123.8 }, // Bohol/Visayas
+    [Mer de Chine]: { latitude: 11.2, longitude: 119.4 }, // Palawan
   },
   Malaisie: {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 4.2, longitude: 118.6 }, // Sipadan (Bornéo)
+    [Pacifique]: { latitude: 4.2, longitude: 118.6 }, // Sipadan (Bornéo)
     "Mer de Chine": { latitude: 2.8, longitude: 104.1 }, // Tioman
   },
   Japon: {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 26.2, longitude: 127.7 }, // Okinawa
+    [Pacifique]: { latitude: 26.2, longitude: 127.7 }, // Okinawa
     "Mer du Japon": { latitude: 35.6, longitude: 135.0 },
   },
-  Vietnam: { [OCEAN_NAMES.CHINE]: { latitude: 12.2, longitude: 109.3 } }, // Nha Trang
-  "Sri Lanka": { [OCEAN_NAMES.INDIEN]: { latitude: 6.0, longitude: 80.2 } },
+  Vietnam: { [Mer de Chine]: { latitude: 12.2, longitude: 109.3 } }, // Nha Trang
+  "Sri Lanka": { [Océan Indien]: { latitude: 6.0, longitude: 80.2 } },
   Inde: {
-    [OCEAN_NAMES.INDIEN]: { latitude: 10.5, longitude: 72.6 }, // Lakshadweep
-    [OCEAN_NAMES.ANDAMAN]: { latitude: 11.5, longitude: 92.7 }, // Îles Andaman
+    [Océan Indien]: { latitude: 10.5, longitude: 72.6 }, // Lakshadweep
+    [Mer d'Andaman]: { latitude: 11.5, longitude: 92.7 }, // Îles Andaman
   },
-  Taïwan: { [OCEAN_NAMES.PACIFIQUE]: { latitude: 22.0, longitude: 120.7 } },
+  Taïwan: { [Pacifique]: { latitude: 22.0, longitude: 120.7 } },
   "Timor oriental": {
-    [OCEAN_NAMES.INDIEN]: { latitude: -8.5, longitude: 125.6 },
+    [Océan Indien]: { latitude: -8.5, longitude: 125.6 },
   }, // Atauro Island (Biodiversité record)
-  Myanmar: { [OCEAN_NAMES.ANDAMAN]: { latitude: 12.0, longitude: 98.0 } }, // Mergui Archipelago
+  Myanmar: { [Mer d'Andaman]: { latitude: 12.0, longitude: 98.0 } }, // Mergui Archipelago
   Cambodge: { "Golfe de Thaïlande": { latitude: 10.5, longitude: 103.5 } }, // Koh Rong
   "Corée du Sud": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 33.3, longitude: 126.5 },
+    [Pacifique]: { latitude: 33.3, longitude: 126.5 },
   }, // Jeju Island
   Singapour: { "Mer de Chine": { latitude: 1.2, longitude: 103.8 } }, // Pulau Hantu
   // --- OCÉANIE ---
   Australie: {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -16.8, longitude: 145.8 }, // Grande Barrière (Cairns)
-    [OCEAN_NAMES.INDIEN]: { latitude: -21.9, longitude: 114.1 }, // Ningaloo Reef
+    [Pacifique]: { latitude: -16.8, longitude: 145.8 }, // Grande Barrière (Cairns)
+    [Océan Indien]: { latitude: -21.9, longitude: 114.1 }, // Ningaloo Reef
   },
   "Nouvelle-Zélande": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -35.5, longitude: 174.5 },
+    [Pacifique]: { latitude: -35.5, longitude: 174.5 },
   }, // Poor Knights
   "Polynésie Française": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -16.5, longitude: -151.7 },
+    [Pacifique]: { latitude: -16.5, longitude: -151.7 },
   }, // Bora Bora/Rangiroa
   "Nouvelle-Calédonie": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -22.3, longitude: 166.4 },
+    [Pacifique]: { latitude: -22.3, longitude: 166.4 },
   },
-  Fidji: { [OCEAN_NAMES.PACIFIQUE]: { latitude: -17.7, longitude: 178.0 } },
-  Palau: { [OCEAN_NAMES.PACIFIQUE]: { latitude: 7.3, longitude: 134.5 } },
-  Micronésie: { [OCEAN_NAMES.PACIFIQUE]: { latitude: 7.4, longitude: 151.8 } }, // Truk Lagoon
+  Fidji: { [Pacifique]: { latitude: -17.7, longitude: 178.0 } },
+  Palau: { [Pacifique]: { latitude: 7.3, longitude: 134.5 } },
+  Micronésie: { [Pacifique]: { latitude: 7.4, longitude: 151.8 } }, // Truk Lagoon
   "Papouasie-Nouvelle-Guinée": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -9.4, longitude: 147.2 },
+    [Pacifique]: { latitude: -9.4, longitude: 147.2 },
   },
-  Vanuatu: { [OCEAN_NAMES.PACIFIQUE]: { latitude: -17.7, longitude: 168.3 } },
+  Vanuatu: { [Pacifique]: { latitude: -17.7, longitude: 168.3 } },
   "Îles Salomon": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -9.0, longitude: 160.0 },
+    [Pacifique]: { latitude: -9.0, longitude: 160.0 },
   }, // Guadalcanal/Wrecks
-  Tonga: { [OCEAN_NAMES.PACIFIQUE]: { latitude: -18.6, longitude: -174.0 } }, // Vava'u (Baleines à bosse)
+  Tonga: { [Pacifique]: { latitude: -18.6, longitude: -174.0 } }, // Vava'u (Baleines à bosse)
   "Îles Cook": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -21.2, longitude: -159.8 },
+    [Pacifique]: { latitude: -21.2, longitude: -159.8 },
   }, // Rarotonga
-  Samoa: { [OCEAN_NAMES.PACIFIQUE]: { latitude: -13.8, longitude: -172.0 } },
+  Samoa: { [Pacifique]: { latitude: -13.8, longitude: -172.0 } },
   "Îles Marshall": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 7.1, longitude: 171.2 },
+    [Pacifique]: { latitude: 7.1, longitude: 171.2 },
   }, // Bikini Atoll (Épaves nucléaires)
-  Kiribati: { [OCEAN_NAMES.PACIFIQUE]: { latitude: 1.9, longitude: -157.4 } }, // Kiritimati
+  Kiribati: { [Pacifique]: { latitude: 1.9, longitude: -157.4 } }, // Kiritimati
   // --- AMÉRIQUE DU NORD & CARAÏBES ---
   USA: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 25.0, longitude: -80.4 }, // Florida Keys
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 33.3, longitude: -118.3 }, // Californie/Catalina
-    [OCEAN_NAMES.GOLFE_MEXIQUE]: { latitude: 27.8, longitude: -93.0 },
+    [Océan Atlantique]: { latitude: 25.0, longitude: -80.4 }, // Florida Keys
+    [Pacifique]: { latitude: 33.3, longitude: -118.3 }, // Californie/Catalina
+    [Golfe du Mexique]: { latitude: 27.8, longitude: -93.0 },
     Hawaï: { latitude: 20.7, longitude: -156.4 },
   },
   Canada: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 47.5, longitude: -53.0 }, // Terre-Neuve
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 49.5, longitude: -126.5 }, // Vancouver Island
-    [OCEAN_NAMES.ARCTIQUE]: { latitude: 72.0, longitude: -80.0 },
+    [Océan Atlantique]: { latitude: 47.5, longitude: -53.0 }, // Terre-Neuve
+    [Pacifique]: { latitude: 49.5, longitude: -126.5 }, // Vancouver Island
+    [Arctique]: { latitude: 72.0, longitude: -80.0 },
   },
   Mexique: {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 20.5, longitude: -86.9 }, // Cozumel/Cenotes
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 24.1, longitude: -110.3 }, // La Paz/Sea of Cortez
+    [Caraïbes]: { latitude: 20.5, longitude: -86.9 }, // Cozumel/Cenotes
+    [Pacifique]: { latitude: 24.1, longitude: -110.3 }, // La Paz/Sea of Cortez
     Socorro: { latitude: 18.8, longitude: -110.9 }, // Revillagigedo
   },
-  Bahamas: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 24.5, longitude: -76.5 } }, // Exumas
-  Belize: { [OCEAN_NAMES.CARAIBES]: { latitude: 17.5, longitude: -87.5 } }, // Blue Hole
-  Honduras: { [OCEAN_NAMES.CARAIBES]: { latitude: 16.3, longitude: -86.5 } }, // Roatan
+  Bahamas: { [Océan Atlantique]: { latitude: 24.5, longitude: -76.5 } }, // Exumas
+  Belize: { [Caraïbes]: { latitude: 17.5, longitude: -87.5 } }, // Blue Hole
+  Honduras: { [Caraïbes]: { latitude: 16.3, longitude: -86.5 } }, // Roatan
   "Costa Rica": {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 5.5, longitude: -87.0 }, // Île Coco
-    [OCEAN_NAMES.CARAIBES]: { latitude: 9.9, longitude: -83.0 },
+    [Pacifique]: { latitude: 5.5, longitude: -87.0 }, // Île Coco
+    [Caraïbes]: { latitude: 9.9, longitude: -83.0 },
   },
   Panama: {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 7.6, longitude: -81.7 }, // Coiba
-    [OCEAN_NAMES.CARAIBES]: { latitude: 9.3, longitude: -82.2 }, // Bocas del Toro
+    [Pacifique]: { latitude: 7.6, longitude: -81.7 }, // Coiba
+    [Caraïbes]: { latitude: 9.3, longitude: -82.2 }, // Bocas del Toro
   },
-  Cuba: { [OCEAN_NAMES.CARAIBES]: { latitude: 21.6, longitude: -81.5 } }, // Jardines de la Reina
+  Cuba: { [Caraïbes]: { latitude: 21.6, longitude: -81.5 } }, // Jardines de la Reina
   "République Dominicaine": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 18.3, longitude: -68.8 },
+    [Caraïbes]: { latitude: 18.3, longitude: -68.8 },
   },
-  Guadeloupe: { [OCEAN_NAMES.CARAIBES]: { latitude: 16.1, longitude: -61.8 } }, // Réserve Cousteau
-  Martinique: { [OCEAN_NAMES.CARAIBES]: { latitude: 14.5, longitude: -61.1 } },
+  Guadeloupe: { [Caraïbes]: { latitude: 16.1, longitude: -61.8 } }, // Réserve Cousteau
+  Martinique: { [Caraïbes]: { latitude: 14.5, longitude: -61.1 } },
   "Saint-Martin": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 18.0, longitude: -63.0 },
+    [Caraïbes]: { latitude: 18.0, longitude: -63.0 },
   },
-  Bonaire: { [OCEAN_NAMES.CARAIBES]: { latitude: 12.1, longitude: -68.3 } },
-  Curaçao: { [OCEAN_NAMES.CARAIBES]: { latitude: 12.2, longitude: -69.0 } },
+  Bonaire: { [Caraïbes]: { latitude: 12.1, longitude: -68.3 } },
+  Curaçao: { [Caraïbes]: { latitude: 12.2, longitude: -69.0 } },
   "Îles Caïmans": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 19.3, longitude: -81.4 },
+    [Caraïbes]: { latitude: 19.3, longitude: -81.4 },
   },
   "Turques-et-Caïques": {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: 21.8, longitude: -72.3 },
+    [Océan Atlantique]: { latitude: 21.8, longitude: -72.3 },
   }, // Grand Turk
-  Bermudes: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 32.3, longitude: -64.8 } }, // Épaves
-  Aruba: { [OCEAN_NAMES.CARAIBES]: { latitude: 12.5, longitude: -70.0 } },
-  Dominique: { [OCEAN_NAMES.CARAIBES]: { latitude: 15.4, longitude: -61.4 } }, // Cachalots
+  Bermudes: { [Océan Atlantique]: { latitude: 32.3, longitude: -64.8 } }, // Épaves
+  Aruba: { [Caraïbes]: { latitude: 12.5, longitude: -70.0 } },
+  Dominique: { [Caraïbes]: { latitude: 15.4, longitude: -61.4 } }, // Cachalots
   "Sainte-Lucie": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 13.9, longitude: -61.0 },
+    [Caraïbes]: { latitude: 13.9, longitude: -61.0 },
   },
-  Barbade: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: 13.2, longitude: -59.6 } },
-  Grenade: { [OCEAN_NAMES.CARAIBES]: { latitude: 12.0, longitude: -61.7 } }, // Sculpture Park
+  Barbade: { [Océan Atlantique]: { latitude: 13.2, longitude: -59.6 } },
+  Grenade: { [Caraïbes]: { latitude: 12.0, longitude: -61.7 } }, // Sculpture Park
   "Îles Vierges britanniques": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 18.4, longitude: -64.6 },
+    [Caraïbes]: { latitude: 18.4, longitude: -64.6 },
   },
   "Îles Vierges des États-Unis": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 18.3, longitude: -64.8 },
+    [Caraïbes]: { latitude: 18.3, longitude: -64.8 },
   },
   "Saint-Kitts-et-Nevis": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 17.3, longitude: -62.7 },
+    [Caraïbes]: { latitude: 17.3, longitude: -62.7 },
   },
   "Antigua-et-Barbuda": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 17.0, longitude: -61.8 },
+    [Caraïbes]: { latitude: 17.0, longitude: -61.8 },
   },
   "Porto Rico": {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 18.2, longitude: -66.4 },
+    [Caraïbes]: { latitude: 18.2, longitude: -66.4 },
   },
   // --- AMÉRIQUE DU SUD ---
   Brésil: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: -3.8, longitude: -32.4 }, // Fernando de Noronha
+    [Océan Atlantique]: { latitude: -3.8, longitude: -32.4 }, // Fernando de Noronha
   },
   Colombie: {
-    [OCEAN_NAMES.CARAIBES]: { latitude: 12.5, longitude: -81.7 }, // San Andres/Providencia
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: 3.9, longitude: -81.6 }, // Malpelo
+    [Caraïbes]: { latitude: 12.5, longitude: -81.7 }, // San Andres/Providencia
+    [Pacifique]: { latitude: 3.9, longitude: -81.6 }, // Malpelo
   },
   Équateur: {
-    [OCEAN_NAMES.PACIFIQUE]: { latitude: -0.8, longitude: -91.0 }, // Galapagos
+    [Pacifique]: { latitude: -0.8, longitude: -91.0 }, // Galapagos
   },
-  Pérou: { [OCEAN_NAMES.PACIFIQUE]: { latitude: -13.5, longitude: -76.5 } },
-  Chili: { [OCEAN_NAMES.PACIFIQUE]: { latitude: -27.0, longitude: -71.0 } },
-  Venezuela: { [OCEAN_NAMES.CARAIBES]: { latitude: 11.9, longitude: -66.1 } }, // Los Roques
+  Pérou: { [Pacifique]: { latitude: -13.5, longitude: -76.5 } },
+  Chili: { [Pacifique]: { latitude: -27.0, longitude: -71.0 } },
+  Venezuela: { [Caraïbes]: { latitude: 11.9, longitude: -66.1 } }, // Los Roques
   Argentine: {
-    [OCEAN_NAMES.ATLANTIQUE]: { latitude: -42.5, longitude: -64.0 },
+    [Océan Atlantique]: { latitude: -42.5, longitude: -64.0 },
   }, // Péninsule Valdés (Orques/Lions de mer)
-  Uruguay: { [OCEAN_NAMES.ATLANTIQUE]: { latitude: -35.0, longitude: -54.9 } }, // Isla de Lobos
+  Uruguay: { [Océan Atlantique]: { latitude: -35.0, longitude: -54.9 } }, // Isla de Lobos
   // --- ZONES POLAIRES (Extrême) ---
   Antarctique: { "Océan Austral": { latitude: -64.8, longitude: -62.6 } }, // Péninsule Antarctique
-  Groenland: { [OCEAN_NAMES.ARCTIQUE]: { latitude: 69.0, longitude: -51.0 } }, // Disko Bay
+  Groenland: { [Arctique]: { latitude: 69.0, longitude: -51.0 } }, // Disko Bay
 };
-
-// --- 2. GÉOGRAPHIE --- dérivé de COUNTRY_COORDINATES (source unique de vérité)
-// Tous les pays et leurs océans sont automatiquement synchronisés.
-export const GEOGRAPHY_DB: Record<string, string[]> = Object.fromEntries(
-  Object.entries(COUNTRY_COORDINATES).map(([country, oceans]) => [
-    country,
-    Object.keys(oceans),
-  ]),
-);
