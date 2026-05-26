@@ -7,13 +7,14 @@ import { syncAll } from "@/services/sync";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import { router } from "expo-router";
-import * as Sharing from "expo-sharing";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -132,10 +133,19 @@ export default function SettingsScreen() {
       await FileSystem.writeAsStringAsync(path, json, {
         encoding: FileSystem.EncodingType.UTF8,
       });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(path);
-      } else {
-        Alert.alert("Export OK", `Fichier sauvegardé : ${path}`);
+      // Share natif RN : sur iOS on partage l'URL fichier, sur Android
+      // on partage le texte (la sheet de partage natif gère la suite).
+      try {
+        if (Platform.OS === "ios") {
+          await Share.share({ url: path, title: "Export MarineDex" });
+        } else {
+          await Share.share({
+            title: "Export MarineDex",
+            message: `Sauvegarde MarineDex (${new Date().toLocaleString()})\n\n${json.slice(0, 5000)}${json.length > 5000 ? "\n…(tronqué)" : ""}`,
+          });
+        }
+      } catch {
+        Alert.alert("Export prêt", `Fichier sauvegardé sur l'appareil :\n${path}`);
       }
     } catch (e: any) {
       Alert.alert("Erreur export", e?.message ?? "");

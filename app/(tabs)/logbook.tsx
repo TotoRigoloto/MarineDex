@@ -16,10 +16,11 @@ import {
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import { deleteObsCloud } from "@/services/sync";
+import { fetchWeather, toIsoDate } from "@/services/weather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
@@ -43,6 +44,7 @@ import MapView from "react-native-maps";
 type Mode = "trips" | "observations";
 
 export default function LogbookScreen() {
+  const params = useLocalSearchParams<{ newObsForTrip?: string }>();
   const [logs, setLogs] = useState<Observation[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [mode, setMode] = useState<Mode>("trips");
@@ -79,11 +81,25 @@ export default function LogbookScreen() {
   const [familyFilter, setFamilyFilter] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Détails plongée (optionnels)
+  const [depthInput, setDepthInput] = useState("");
+  const [durationInput, setDurationInput] = useState("");
+  const [visibilityInput, setVisibilityInput] = useState("");
+  const [waterTempInput, setWaterTempInput] = useState("");
+  const [showDiveDetails, setShowDiveDetails] = useState(false);
+  const [weatherSnapshot, setWeatherSnapshot] = useState<
+    Observation["weather"] | undefined
+  >(undefined);
+  const [fetchingWeather, setFetchingWeather] = useState(false);
+
   // États formulaire voyage
   const [tripFormVisible, setTripFormVisible] = useState(false);
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
   const [tripName, setTripName] = useState("");
   const [tripCountry, setTripCountry] = useState("");
+  const [tripCountrySuggestions, setTripCountrySuggestions] = useState<
+    string[]
+  >([]);
   const [tripStart, setTripStart] = useState("");
   const [tripEnd, setTripEnd] = useState("");
   const [tripCover, setTripCover] = useState<string | undefined>(undefined);
@@ -94,6 +110,21 @@ export default function LogbookScreen() {
     useCallback(() => {
       loadAll();
     }, []),
+  );
+
+  // Auto-ouverture du form d'observation quand on vient de trip/[id] avec ?newObsForTrip=xxx
+  useFocusEffect(
+    useCallback(() => {
+      if (!params.newObsForTrip) return;
+      // Petit délai pour s'assurer que loadAll a fini de remplir trips
+      const t = setTimeout(() => {
+        setMode("observations");
+        openNewLogModal(params.newObsForTrip);
+        // Vide le paramètre pour ne pas re-déclencher
+        router.setParams({ newObsForTrip: undefined } as any);
+      }, 300);
+      return () => clearTimeout(t);
+    }, [params.newObsForTrip]),
   );
 
   const loadAll = async () => {
@@ -200,6 +231,15 @@ export default function LogbookScreen() {
   };
 
   // ====== Observation form ======
+  const resetDiveFields = () => {
+    setDepthInput("");
+    setDurationInput("");
+    setVisibilityInput("");
+    setWaterTempInput("");
+    setShowDiveDetails(false);
+    setWeatherSnapshot(undefined);
+  };
+
   const openNewLogModal = (tripId?: string) => {
     setEditingLogId(null);
     setSpeciesInput("");
@@ -213,6 +253,7 @@ export default function LogbookScreen() {
     setFilteredLocations([]);
     setExactCoords(null);
     setObsTripId(tripId);
+    resetDiveFields();
     // Si on crée depuis un voyage, pré-remplir le pays
     if (tripId) {
       const t = trips.find((tt) => tt.id === tripId);
@@ -233,6 +274,21 @@ export default function LogbookScreen() {
     setObsTripId(item.tripId);
     setFilteredSpecies([]);
     setFilteredLocations([]);
+    // Préremplir dive details s'ils existent
+    setDepthInput(item.depthM != null ? String(item.depthM) : "");
+    setDurationInput(item.durationMin != null ? String(item.durationMin) : "");
+    setVisibilityInput(
+      item.visibilityM != null ? String(item.visibilityM) : "",
+    );
+    setWaterTempInput(item.waterTempC != null ? String(item.waterTempC) : "");
+    setWeatherSnapshot(item.weather);
+    setShowDiveDetails(
+      item.depthM != null ||
+        item.durationMin != null ||
+        item.visibilityM != null ||
+        item.waterTempC != null ||
+        !!item.weather,
+    );
     if (item.latitude && item.longitude) {
       setExactCoords({ latitude: item.latitude, longitude: item.longitude });
       setPickerRegion({
@@ -245,6 +301,37 @@ export default function LogbookScreen() {
       setExactCoords(null);
     }
     setFormVisible(true);
+  };
+
+  // Récupère météo à partir des coords + date du form
+  const fetchWeatherForObs = async () => {
+    if (!exactCoords) {
+      Alert.alert(
+        "Pas de coordonnées",
+        "Capture d'abord ta position GPS ou choisis un point sur la carte.",
+      );
+      return;
+    }
+    setFetchingWeather(true);
+    try {
+      const iso = toIsoDate(dateInput);
+      const snap = await fetchWeather(
+        exactCoords.latitude,
+        exactCoords.longitude,
+        iso,
+      );
+      if (snap) {
+        setWeatherSnapshot(snap);
+        Alert.alert(
+          "Météo enregistrée ✓",
+          "Conditions ajoutées à l'observation.",
+        );
+      } else {
+        Alert.alert("Erreur", "Impossible de récupérer la météo.");
+      }
+    } finally {
+      setFetchingWeather(false);
+    }
   };
 
   const pickPhoto = async () => {
@@ -312,6 +399,12 @@ export default function LogbookScreen() {
       Alert.alert("Erreur", "Nom d'espèce obligatoire !");
       return;
     }
+    // Parse helpers — on accepte les , et . comme séparateur décimal
+    const toNum = (s: string) => {
+      const n = parseFloat(s.replace(",", "."));
+      return Number.isFinite(n) ? n : undefined;
+    };
+
     const data: Observation = {
       id: editingLogId || Date.now().toString(),
       speciesName: speciesInput,
@@ -323,6 +416,11 @@ export default function LogbookScreen() {
       latitude: exactCoords?.latitude,
       longitude: exactCoords?.longitude,
       tripId: obsTripId,
+      depthM: toNum(depthInput),
+      durationMin: toNum(durationInput),
+      visibilityM: toNum(visibilityInput),
+      waterTempC: toNum(waterTempInput),
+      weather: weatherSnapshot,
     };
     try {
       let updated;
@@ -385,6 +483,7 @@ export default function LogbookScreen() {
     setEditingTripId(null);
     setTripName("");
     setTripCountry("");
+    setTripCountrySuggestions([]);
     setTripStart("");
     setTripEnd("");
     setTripCover(undefined);
@@ -397,6 +496,7 @@ export default function LogbookScreen() {
     setEditingTripId(t.id);
     setTripName(t.name);
     setTripCountry(t.country);
+    setTripCountrySuggestions([]);
     setTripStart(t.startDate);
     setTripEnd(t.endDate);
     setTripCover(t.coverPhoto);
@@ -415,17 +515,83 @@ export default function LogbookScreen() {
     if (!r.canceled) setTripCover(r.assets[0].uri);
   };
 
+  // Insère automatiquement les / pour formater "12032025" en "12/03/2025"
+  const autoFormatDate = (raw: string): string => {
+    // On vire tout ce qui n'est pas chiffre, puis on regroupe en DD/MM/YYYY
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    let out = digits;
+    if (digits.length > 2) out = digits.slice(0, 2) + "/" + digits.slice(2);
+    if (digits.length > 4)
+      out =
+        digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+    return out;
+  };
+
+  // Valide une date DD/MM/YYYY → Date (ou null)
+  const parseDmy = (s: string): Date | null => {
+    const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    // Vérifie que la date est cohérente (pas 32/13/...)
+    if (
+      d.getFullYear() !== Number(m[3]) ||
+      d.getMonth() !== Number(m[2]) - 1 ||
+      d.getDate() !== Number(m[1])
+    )
+      return null;
+    return d;
+  };
+
   const saveTrip = async () => {
+    // Nom
     if (!tripName.trim()) {
       Alert.alert("Erreur", "Donne un nom à ton voyage !");
       return;
     }
+
+    // Pays : doit appartenir à GEOGRAPHY_DB (insensible à la casse)
+    const countryKey = Object.keys(GEOGRAPHY_DB).find(
+      (k) => k.toLowerCase() === tripCountry.trim().toLowerCase(),
+    );
+    if (!countryKey) {
+      Alert.alert(
+        "Pays invalide",
+        `&laquo;&nbsp;${tripCountry}&nbsp;&raquo; n'est pas dans la liste. Sélectionne un pays dans les suggestions.`,
+      );
+      return;
+    }
+
+    // Dates : format DD/MM/YYYY obligatoire
+    const startDate = parseDmy(tripStart);
+    const endDate = parseDmy(tripEnd);
+    if (!startDate) {
+      Alert.alert(
+        "Date de début invalide",
+        "Format attendu : JJ/MM/AAAA (ex: 12/03/2025)",
+      );
+      return;
+    }
+    if (!endDate) {
+      Alert.alert(
+        "Date de fin invalide",
+        "Format attendu : JJ/MM/AAAA (ex: 25/03/2025)",
+      );
+      return;
+    }
+    if (endDate.getTime() < startDate.getTime()) {
+      Alert.alert(
+        "Dates incohérentes",
+        "La date de fin doit être postérieure ou égale à la date de début.",
+      );
+      return;
+    }
+
     const t: Trip = {
       id: editingTripId || Date.now().toString(),
       name: tripName.trim(),
-      country: tripCountry.trim() || "—",
-      startDate: tripStart || new Date().toLocaleDateString(),
-      endDate: tripEnd || tripStart || new Date().toLocaleDateString(),
+      country: countryKey, // Casse normalisée
+      startDate: tripStart,
+      endDate: tripEnd,
       coverPhoto: tripCover,
       color: tripColor,
       notes: tripNotes,
@@ -670,16 +836,20 @@ export default function LogbookScreen() {
             )}
           </View>
 
-          {/* Chips de familles */}
+          {/* Chips de familles — Scroll horizontal */}
           {availableFamilies.length > 0 && (
             <ScrollView
-              horizontal
+              horizontal={true}
               showsHorizontalScrollIndicator={false}
+              directionalLockEnabled={true}
+              alwaysBounceVertical={false}
+              style={styles.familyChipsScroll}
               contentContainerStyle={styles.familyChips}
             >
               <TouchableOpacity
                 style={[styles.famChip, !familyFilter && styles.famChipActive]}
                 onPress={() => setFamilyFilter(null)}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[
@@ -698,6 +868,7 @@ export default function LogbookScreen() {
                     familyFilter === f && styles.famChipActive,
                   ]}
                   onPress={() => setFamilyFilter(familyFilter === f ? null : f)}
+                  activeOpacity={0.7}
                 >
                   <Text
                     style={[
@@ -782,31 +953,75 @@ export default function LogbookScreen() {
                   onChangeText={setTripName}
                 />
 
-                <Text style={styles.label}>Pays / Destination</Text>
+                <Text style={styles.label}>Pays / Destination *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: Philippines"
+                  placeholder="Ex: Philippines (choisir dans la liste)"
                   value={tripCountry}
-                  onChangeText={setTripCountry}
+                  onChangeText={(text) => {
+                    setTripCountry(text);
+                    if (text.length > 0) {
+                      const all = Object.keys(GEOGRAPHY_DB);
+                      setTripCountrySuggestions(
+                        all
+                          .filter((c) =>
+                            c.toLowerCase().includes(text.toLowerCase()),
+                          )
+                          .slice(0, 8),
+                      );
+                    } else {
+                      setTripCountrySuggestions([]);
+                    }
+                  }}
                 />
+                {tripCountrySuggestions.length > 0 && (
+                  <View style={styles.suggestionsBox}>
+                    {tripCountrySuggestions.map((c, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setTripCountry(c);
+                          setTripCountrySuggestions([]);
+                        }}
+                      >
+                        <Text>{c}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {tripCountry.length > 0 &&
+                  tripCountrySuggestions.length === 0 &&
+                  !Object.keys(GEOGRAPHY_DB).some(
+                    (k) => k.toLowerCase() === tripCountry.toLowerCase(),
+                  ) && (
+                    <Text style={styles.fieldHint}>
+                      ⚠️ Pays non reconnu. Commence à taper pour voir les
+                      suggestions.
+                    </Text>
+                  )}
 
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>Du</Text>
+                    <Text style={styles.label}>Du * (JJ/MM/AAAA)</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="12/03/2025"
                       value={tripStart}
-                      onChangeText={setTripStart}
+                      onChangeText={(t) => setTripStart(autoFormatDate(t))}
+                      keyboardType="number-pad"
+                      maxLength={10}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>Au</Text>
+                    <Text style={styles.label}>Au * (JJ/MM/AAAA)</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="25/03/2025"
                       value={tripEnd}
-                      onChangeText={setTripEnd}
+                      onChangeText={(t) => setTripEnd(autoFormatDate(t))}
+                      keyboardType="number-pad"
+                      maxLength={10}
                     />
                   </View>
                 </View>
@@ -1099,6 +1314,98 @@ export default function LogbookScreen() {
                   onChangeText={setDateInput}
                   returnKeyType="done"
                 />
+
+                {/* ===== Section pliable : Détails de plongée ===== */}
+                <TouchableOpacity
+                  style={styles.diveToggle}
+                  onPress={() => setShowDiveDetails(!showDiveDetails)}
+                >
+                  <Text style={styles.diveToggleTxt}>
+                    🤿 Détails de plongée {showDiveDetails ? "▾" : "▸"}
+                  </Text>
+                </TouchableOpacity>
+
+                {showDiveDetails && (
+                  <View style={styles.diveBox}>
+                    <View style={styles.diveGrid}>
+                      <View style={styles.diveCell}>
+                        <Text style={styles.diveLbl}>📏 Profondeur (m)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={depthInput}
+                          onChangeText={setDepthInput}
+                          keyboardType="decimal-pad"
+                          placeholder="ex: 18"
+                        />
+                      </View>
+                      <View style={styles.diveCell}>
+                        <Text style={styles.diveLbl}>⏱️ Durée (min)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={durationInput}
+                          onChangeText={setDurationInput}
+                          keyboardType="number-pad"
+                          placeholder="ex: 45"
+                        />
+                      </View>
+                      <View style={styles.diveCell}>
+                        <Text style={styles.diveLbl}>👁️ Visibilité (m)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={visibilityInput}
+                          onChangeText={setVisibilityInput}
+                          keyboardType="decimal-pad"
+                          placeholder="ex: 15"
+                        />
+                      </View>
+                      <View style={styles.diveCell}>
+                        <Text style={styles.diveLbl}>🌡️ T° eau (°C)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={waterTempInput}
+                          onChangeText={setWaterTempInput}
+                          keyboardType="decimal-pad"
+                          placeholder="ex: 26"
+                        />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.weatherBtn}
+                      onPress={fetchWeatherForObs}
+                      disabled={fetchingWeather}
+                    >
+                      <Text style={styles.weatherBtnTxt}>
+                        {fetchingWeather
+                          ? "Récupération…"
+                          : weatherSnapshot
+                            ? "🌤️ Mettre à jour la météo"
+                            : "🌤️ Récupérer la météo (Open-Meteo)"}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {weatherSnapshot && (
+                      <View style={styles.weatherChips}>
+                        {weatherSnapshot.airTempC != null && (
+                          <Text style={styles.weatherChip}>
+                            🌡️ {Math.round(weatherSnapshot.airTempC)}°C air
+                          </Text>
+                        )}
+                        {weatherSnapshot.windKmh != null && (
+                          <Text style={styles.weatherChip}>
+                            💨 {Math.round(weatherSnapshot.windKmh)} km/h
+                          </Text>
+                        )}
+                        {weatherSnapshot.waveHeightM != null && (
+                          <Text style={styles.weatherChip}>
+                            🌊 {weatherSnapshot.waveHeightM} m
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 <Text style={styles.label}>Notes :</Text>
                 <TextInput
                   style={[styles.input, { height: 80 }]}
@@ -1243,24 +1550,77 @@ const styles = StyleSheet.create({
   searchIcon: { fontSize: 16, marginRight: 8, opacity: 0.6 },
   searchInput: { flex: 1, fontSize: 14, color: "#333", padding: 0 },
   searchClear: { fontSize: 18, color: "#999", paddingHorizontal: 6 },
+  familyChipsScroll: { height: 60, marginBottom: 12, flexGrow: 0 },
   familyChips: {
     paddingHorizontal: 15,
-    paddingBottom: 10,
-    gap: 6,
     flexDirection: "row",
+    alignItems: "center",
+    //height: "100%",
   },
   famChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
+    height: 42, // hauteur fixe identique pour tous les chips
+    paddingHorizontal: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 21,
+    borderWidth: 1.5,
     borderColor: "#ccc",
     backgroundColor: "white",
-    marginRight: 6,
+    marginRight: 8,
   },
   famChipActive: { backgroundColor: "#006994", borderColor: "#006994" },
-  famChipTxt: { fontSize: 12, color: "#444", fontWeight: "600" },
+  famChipTxt: { fontSize: 14, color: "#444", fontWeight: "600" },
   famChipTxtActive: { color: "white" },
+
+  // Dive details
+  diveToggle: {
+    backgroundColor: "#e3f2fd",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  diveToggleTxt: { color: "#006994", fontWeight: "bold", fontSize: 14 },
+  diveBox: {
+    backgroundColor: "#f6fbff",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e0eef7",
+  },
+  diveGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  diveCell: { width: "47%" },
+  diveLbl: { fontSize: 11, color: "#666", marginBottom: 2 },
+  weatherBtn: {
+    backgroundColor: "#0288D1",
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+    alignItems: "center",
+  },
+  weatherBtnTxt: { color: "white", fontWeight: "bold", fontSize: 13 },
+  weatherChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 8,
+  },
+  weatherChip: {
+    backgroundColor: "white",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 11,
+    color: "#333",
+    borderWidth: 1,
+    borderColor: "#cfe7f8",
+  },
 
   // Swipe delete
   swipeDelete: {
@@ -1434,12 +1794,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
   },
   suggestionsBox: {
-    maxHeight: 100,
+    maxHeight: 200,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#eee",
     marginBottom: 10,
     borderRadius: 5,
+  },
+  fieldHint: {
+    fontSize: 11,
+    color: "#dc3545",
+    marginTop: -4,
+    marginBottom: 10,
+    fontStyle: "italic",
   },
   suggestionItem: {
     padding: 10,

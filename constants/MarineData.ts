@@ -1487,7 +1487,19 @@ export interface Observation {
   notes?: string;
   latitude?: number;
   longitude?: number;
-  tripId?: string; // NOUVEAU : Rattachement à un voyage
+  tripId?: string; // Rattachement à un voyage
+  // === Détails plongée (optionnels) ===
+  depthM?: number; // profondeur en mètres
+  durationMin?: number; // durée de la plongée en minutes
+  visibilityM?: number; // visibilité en mètres
+  waterTempC?: number; // T° eau en °C
+  // === Météo au moment de l'obs (fetched depuis Open-Meteo) ===
+  weather?: {
+    airTempC?: number;
+    windKmh?: number;
+    waveHeightM?: number;
+    weatherCode?: number; // code WMO
+  };
 }
 
 // --- VOYAGES (Storyboards) ---
