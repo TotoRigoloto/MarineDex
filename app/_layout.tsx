@@ -8,47 +8,65 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
+import ErrorBoundary from "@/components/error-boundary";
 import SplashLoader from "@/components/splash-loader";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { supabase } from "@/services/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-// Petit hook : vérifie si l'utilisateur a déjà créé son profil local
+// Auth guard : on attend la session Supabase ET on regarde le flag local
+// (qui permet d'utiliser l'app en mode local/offline si l'utilisateur le choisit).
 function useAuthRedirect() {
   const [ready, setReady] = useState(false);
-  const [hasAccount, setHasAccount] = useState(false);
+  const [authed, setAuthed] = useState(false);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    const check = async () => {
+    let mounted = true;
+
+    const checkSession = async () => {
       try {
-        const v = await AsyncStorage.getItem(STORAGE_KEYS.HAS_ACCOUNT);
-        setHasAccount(v === "true");
+        const { data } = await supabase.auth.getSession();
+        const localFlag = await AsyncStorage.getItem(STORAGE_KEYS.HAS_ACCOUNT);
+        if (!mounted) return;
+        setAuthed(!!data.session || localFlag === "true");
       } catch {
-        setHasAccount(false);
+        if (!mounted) return;
+        setAuthed(false);
       } finally {
-        // Petit délai pour laisser la splash respirer (UX, pas trop court)
-        setTimeout(() => setReady(true), 700);
+        // petit délai pour laisser le splash respirer
+        setTimeout(() => mounted && setReady(true), 600);
       }
     };
-    check();
+
+    checkSession();
+
+    // Réagit aux changements d'auth (logout depuis Réglages, etc.)
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (!mounted) return;
+      if (session) setAuthed(true);
+      // ne pas mettre setAuthed(false) ici : on garde l'utilisateur en mode local
+      // s'il n'a pas vraiment cliqué sur "Déconnexion".
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    const inAuthGroup = segments[0] === "login";
-
-    if (!hasAccount && !inAuthGroup) {
-      router.replace("/login");
-    } else if (hasAccount && inAuthGroup) {
-      router.replace("/(tabs)");
-    }
-  }, [ready, hasAccount, segments, router]);
+    const inAuth = segments[0] === "login";
+    if (!authed && !inAuth) router.replace("/login");
+    else if (authed && inAuth) router.replace("/(tabs)");
+  }, [ready, authed, segments, router]);
 
   return ready;
 }
@@ -62,27 +80,45 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="login"
-          options={{ headerShown: false, animation: "fade" }}
-        />
-        <Stack.Screen
-          name="trip/[id]"
-          options={{ headerShown: false, presentation: "card" }}
-        />
-        <Stack.Screen
-          name="revosea"
-          options={{ headerShown: false, presentation: "card" }}
-        />
-        <Stack.Screen
-          name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
-        />
-      </Stack>
-      <StatusBar style="light" />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="login"
+            options={{ headerShown: false, animation: "fade" }}
+          />
+          <Stack.Screen
+            name="trip/[id]"
+            options={{ headerShown: false, presentation: "card" }}
+          />
+          <Stack.Screen
+            name="revosea"
+            options={{ headerShown: false, presentation: "card" }}
+          />
+          <Stack.Screen
+            name="settings"
+            options={{ headerShown: false, presentation: "card" }}
+          />
+          <Stack.Screen
+            name="legal/privacy"
+            options={{ headerShown: false, presentation: "card" }}
+          />
+          <Stack.Screen
+            name="legal/terms"
+            options={{ headerShown: false, presentation: "card" }}
+          />
+          <Stack.Screen
+            name="legal/about"
+            options={{ headerShown: false, presentation: "card" }}
+          />
+          <Stack.Screen
+            name="modal"
+            options={{ presentation: "modal", title: "Modal" }}
+          />
+        </Stack>
+        <StatusBar style="light" />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

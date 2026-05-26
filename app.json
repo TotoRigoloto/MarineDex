@@ -1,17 +1,28 @@
 {
   "expo": {
-    "name": "MarinePokedex",
+    "name": "MarineDex",
     "slug": "MarinePokedex",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "marinepokedex",
+    "scheme": "marinedex",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.revosea.marinedex",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "MarineDex utilise l'appareil photo pour identifier les espèces marines que vous rencontrez et illustrer vos observations.",
+        "NSPhotoLibraryUsageDescription": "MarineDex accède à vos photos pour les associer à vos observations marines et créer des storyboards de voyage.",
+        "NSPhotoLibraryAddUsageDescription": "MarineDex peut enregistrer une copie de vos observations dans votre pellicule pour partage et sauvegarde.",
+        "NSLocationWhenInUseUsageDescription": "MarineDex utilise votre position pour localiser précisément vos observations sur la carte et vous indiquer les aires marines protégées à proximité."
+      }
     },
     "android": {
+      "package": "com.revosea.marinedex",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,7 +30,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "output": "static",
@@ -33,13 +51,33 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#001a2c",
           "dark": {
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MarineDex accède à vos photos pour les associer à vos observations marines.",
+          "cameraPermission": "MarineDex utilise l'appareil photo pour identifier les espèces marines.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "MarineDex utilise votre position pour géolocaliser vos observations.",
+          "locationWhenInUsePermission": "MarineDex utilise votre position pour géolocaliser vos observations.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
       ]
     ],
+    "extra": {
+      "supabaseUrl": "https://giibfmhllophrouifedj.supabase.co",
+      "supabaseAnonKey": "sb_publishable_xQUWFHHvcW-IfqXgElUV9w_eBFJYS61"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

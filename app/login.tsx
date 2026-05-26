@@ -1,12 +1,13 @@
-// Écran d'inscription / connexion local au premier lancement.
-// Stocke pseudo + email + avatar dans AsyncStorage.
-// Pas de mot de passe : c'est juste un profil local pour l'instant.
-// (Branchable plus tard sur Supabase, déjà installé dans les deps.)
+// Écran Auth : inscription (email+password+pseudo+avatar) OU connexion.
+// Mode hors-ligne : on garde la possibilité de "continuer sans compte" pour
+// tester l'app et migrer plus tard les données vers un compte cloud.
 import { AVATAR_PRESETS, getAvatarById, STORAGE_KEYS } from "@/constants/Storage";
+import { signIn, signUp } from "@/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Easing,
@@ -23,54 +24,52 @@ import {
 
 const { height } = Dimensions.get("window");
 
+type Step = "welcome" | "signup" | "signin";
+
 export default function LoginScreen() {
-  const [step, setStep] = useState<"welcome" | "form">("welcome");
+  const [step, setStep] = useState<Step>("welcome");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [avatarId, setAvatarId] = useState<string>(AVATAR_PRESETS[0].id);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Animation d'entrée
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
 
   useEffect(() => {
+    fadeAnim.setValue(0);
+    slideAnim.setValue(40);
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 800,
+        duration: 600,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
   }, [step, fadeAnim, slideAnim]);
 
-  const validate = () => {
-    if (!username.trim()) {
-      setError("Choisis un pseudo de plongeur 🤿");
-      return false;
-    }
-    if (username.trim().length < 2) {
-      setError("Pseudo trop court");
-      return false;
-    }
-    // Email optionnel mais vérifié si rempli
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Email invalide");
-      return false;
-    }
-    setError(null);
-    return true;
-  };
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
-  const handleCreate = async () => {
-    if (!validate()) return;
+  const handleSignup = async () => {
+    setError(null);
+    setInfo(null);
+    if (username.trim().length < 2) return setError("Pseudo trop court (min 2)");
+    if (!isValidEmail(email)) return setError("Email invalide");
+    if (password.length < 8) return setError("Mot de passe : 8 caractères minimum");
+
+    setLoading(true);
     try {
+      const data = await signUp(email, password, {
+        username: username.trim(),
+        avatar_id: avatarId,
+      });
+
+      // On stocke les infos locales (utilisées par les écrans même hors-ligne)
       await AsyncStorage.multiSet([
         [STORAGE_KEYS.USERNAME, username.trim()],
         [STORAGE_KEYS.USER_EMAIL, email.trim()],
@@ -79,17 +78,62 @@ export default function LoginScreen() {
         [STORAGE_KEYS.HAS_ACCOUNT, "true"],
         [STORAGE_KEYS.ONBOARDING_DONE, "true"],
       ]);
-      router.replace("/(tabs)");
-    } catch (e) {
-      setError("Impossible de créer ton profil.");
+
+      if (data.session) {
+        router.replace("/(tabs)");
+      } else {
+        // Email confirmation activée → on demande de valider
+        setInfo(
+          "Compte créé ! Vérifie tes emails pour valider, puis reviens te connecter.",
+        );
+        setStep("signin");
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Erreur lors de l'inscription");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleSignin = async () => {
+    setError(null);
+    setInfo(null);
+    if (!isValidEmail(email)) return setError("Email invalide");
+    if (password.length < 1) return setError("Mot de passe requis");
+
+    setLoading(true);
+    try {
+      await signIn(email, password);
+      await AsyncStorage.multiSet([
+        [STORAGE_KEYS.USER_EMAIL, email.trim()],
+        [STORAGE_KEYS.HAS_ACCOUNT, "true"],
+        [STORAGE_KEYS.ONBOARDING_DONE, "true"],
+      ]);
+      router.replace("/(tabs)");
+    } catch (e: any) {
+      setError(e?.message ?? "Identifiants incorrects");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mode "essayer sans compte" : crée un profil local seulement (pas de cloud).
+  // Utile pour la review store et pour tester avant de s'engager.
+  const continueOffline = async () => {
+    await AsyncStorage.multiSet([
+      [STORAGE_KEYS.USERNAME, "Explorateur"],
+      [STORAGE_KEYS.AVATAR_ID, AVATAR_PRESETS[0].id],
+      [STORAGE_KEYS.USER_CREATED_AT, String(Date.now())],
+      [STORAGE_KEYS.HAS_ACCOUNT, "true"],
+      [STORAGE_KEYS.ONBOARDING_DONE, "true"],
+    ]);
+    router.replace("/(tabs)");
   };
 
   const selectedAvatar = getAvatarById(avatarId);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Fond dégradé bleu marine */}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#001a2c" }]} />
       <View
         style={[
@@ -106,7 +150,7 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          {step === "welcome" ? (
+          {step === "welcome" && (
             <Animated.View
               style={[
                 styles.center,
@@ -117,10 +161,12 @@ export default function LoginScreen() {
                 <Text style={{ fontSize: 70 }}>🌊</Text>
               </View>
               <Text style={styles.appName}>MarineDex</Text>
-              <Text style={styles.tagline}>Ton carnet d&apos;exploration des océans</Text>
+              <Text style={styles.tagline}>
+                Ton carnet d&apos;exploration des océans
+              </Text>
 
               <View style={styles.featuresList}>
-                <Feature emoji="📸" text="Scanne et identifie les espèces marines" />
+                <Feature emoji="📸" text="Identifie les espèces marines par IA" />
                 <Feature emoji="📔" text="Construis ton journal de voyages" />
                 <Feature emoji="🗺️" text="Cartographie tes observations" />
                 <Feature emoji="🏆" text="Débloque badges et compagnons" />
@@ -128,32 +174,52 @@ export default function LoginScreen() {
 
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => setStep("form")}
+                onPress={() => setStep("signup")}
               >
-                <Text style={styles.primaryButtonText}>Commencer l&apos;aventure</Text>
+                <Text style={styles.primaryButtonText}>Créer un compte</Text>
               </TouchableOpacity>
-              <Text style={styles.legal}>
-                Aucun compte cloud requis. Tes données restent sur ton appareil.
-              </Text>
-            </Animated.View>
-          ) : (
-            <Animated.View
-              style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
-            >
-              <Text style={styles.title}>Crée ton profil de plongeur</Text>
-              <Text style={styles.subtitle}>Tu pourras le modifier plus tard.</Text>
 
-              {/* Aperçu de l'avatar sélectionné */}
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => setStep("signin")}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  J&apos;ai déjà un compte
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={continueOffline}>
+                <Text style={styles.offlineLink}>
+                  Continuer sans compte (mode local)
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {step === "signup" && (
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }}
+            >
+              <Text style={styles.title}>Créer ton compte</Text>
+              <Text style={styles.subtitle}>
+                Tes voyages seront synchronisés en sécurité.
+              </Text>
+
               <View style={styles.previewWrap}>
                 <View
-                  style={[styles.previewAvatar, { backgroundColor: selectedAvatar.bg }]}
+                  style={[
+                    styles.previewAvatar,
+                    { backgroundColor: selectedAvatar.bg },
+                  ]}
                 >
                   <Text style={{ fontSize: 50 }}>{selectedAvatar.emoji}</Text>
                 </View>
                 <Text style={styles.previewLabel}>{selectedAvatar.label}</Text>
               </View>
 
-              {/* Grille d'avatars */}
               <Text style={styles.fieldLabel}>Choisis ton avatar</Text>
               <View style={styles.avatarGrid}>
                 {AVATAR_PRESETS.map((a) => (
@@ -166,12 +232,12 @@ export default function LoginScreen() {
                     ]}
                     onPress={() => setAvatarId(a.id)}
                   >
-                    <Text style={{ fontSize: 26 }}>{a.emoji}</Text>
+                    <Text style={{ fontSize: 24 }}>{a.emoji}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={styles.fieldLabel}>Ton pseudo *</Text>
+              <Text style={styles.fieldLabel}>Pseudo</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ex: CaptainBlue"
@@ -182,25 +248,104 @@ export default function LoginScreen() {
                 returnKeyType="next"
               />
 
-              <Text style={styles.fieldLabel}>Email (optionnel)</Text>
+              <Text style={styles.fieldLabel}>Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder="pour synchroniser plus tard"
+                placeholder="ton.email@exemple.com"
                 placeholderTextColor="#88a"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
+              />
+
+              <Text style={styles.fieldLabel}>Mot de passe</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="8 caractères minimum"
+                placeholderTextColor="#88a"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password-new"
                 returnKeyType="done"
               />
 
               {error && <Text style={styles.error}>⚠️ {error}</Text>}
+              {info && <Text style={styles.info}>ℹ️ {info}</Text>}
 
               <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={handleCreate}
+                style={[styles.primaryButton, loading && { opacity: 0.6 }]}
+                onPress={handleSignup}
+                disabled={loading}
               >
-                <Text style={styles.primaryButtonText}>Plonger 🚀</Text>
+                {loading ? (
+                  <ActivityIndicator color="#01304a" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>S&apos;inscrire 🚀</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setStep("welcome")}>
+                <Text style={styles.backLink}>← Retour</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.legal}>
+                En t&apos;inscrivant tu acceptes nos CGU et notre politique de
+                confidentialité.
+              </Text>
+            </Animated.View>
+          )}
+
+          {step === "signin" && (
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }}
+            >
+              <Text style={styles.title}>Connexion</Text>
+              <Text style={styles.subtitle}>Bon retour parmi nous 🤿</Text>
+
+              <Text style={styles.fieldLabel}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="ton.email@exemple.com"
+                placeholderTextColor="#88a"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
+              />
+              <Text style={styles.fieldLabel}>Mot de passe</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor="#88a"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password"
+                returnKeyType="done"
+              />
+
+              {error && <Text style={styles.error}>⚠️ {error}</Text>}
+              {info && <Text style={styles.info}>ℹ️ {info}</Text>}
+
+              <TouchableOpacity
+                style={[styles.primaryButton, loading && { opacity: 0.6 }]}
+                onPress={handleSignin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#01304a" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Se connecter</Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setStep("welcome")}>
@@ -225,7 +370,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#001a2c" },
   scrollContent: { padding: 25, paddingTop: 60, paddingBottom: 40 },
   center: { alignItems: "center" },
-
   logoCircle: {
     width: 110,
     height: 110,
@@ -237,12 +381,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.4)",
     marginBottom: 20,
   },
-  appName: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "white",
-    letterSpacing: 2,
-  },
+  appName: { fontSize: 36, fontWeight: "bold", color: "white", letterSpacing: 2 },
   tagline: {
     fontSize: 15,
     color: "rgba(255,255,255,0.8)",
@@ -251,7 +390,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: "center",
   },
-
   featuresList: {
     width: "100%",
     marginVertical: 20,
@@ -259,11 +397,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
+  featureRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8 },
   featureEmoji: { fontSize: 22, width: 36 },
   featureText: { color: "white", fontSize: 14, flex: 1 },
 
@@ -272,7 +406,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 40,
     borderRadius: 30,
-    marginTop: 20,
+    marginTop: 16,
     elevation: 5,
     alignSelf: "stretch",
     alignItems: "center",
@@ -283,6 +417,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 0.5,
   },
+  secondaryButton: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    marginTop: 12,
+    alignSelf: "stretch",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  secondaryButtonText: { color: "white", fontWeight: "bold", fontSize: 15 },
+  offlineLink: {
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 18,
+    textDecorationLine: "underline",
+    fontSize: 12,
+  },
   legal: {
     fontSize: 11,
     color: "rgba(255,255,255,0.5)",
@@ -290,51 +442,37 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "white",
-    textAlign: "center",
-  },
+  title: { fontSize: 26, fontWeight: "bold", color: "white", textAlign: "center" },
   subtitle: {
     fontSize: 13,
     color: "rgba(255,255,255,0.7)",
     textAlign: "center",
     marginBottom: 20,
   },
-  previewWrap: { alignItems: "center", marginBottom: 20 },
+  previewWrap: { alignItems: "center", marginBottom: 16 },
   previewAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.4)",
   },
-  previewLabel: {
-    color: "white",
-    marginTop: 8,
-    fontWeight: "bold",
-  },
+  previewLabel: { color: "white", marginTop: 6, fontWeight: "bold" },
 
-  fieldLabel: {
-    color: "white",
-    fontWeight: "bold",
-    marginTop: 15,
-    marginBottom: 8,
-  },
+  fieldLabel: { color: "white", fontWeight: "bold", marginTop: 12, marginBottom: 6 },
   avatarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   avatarOption: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -352,16 +490,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  error: {
-    color: "#FFCDD2",
+  error: { color: "#FFCDD2", marginTop: 10, textAlign: "center", fontWeight: "bold" },
+  info: {
+    color: "#B3E5FC",
     marginTop: 10,
     textAlign: "center",
-    fontWeight: "bold",
+    fontWeight: "600",
+    fontSize: 13,
   },
   backLink: {
     color: "rgba(255,255,255,0.7)",
     textAlign: "center",
-    marginTop: 20,
+    marginTop: 14,
     fontSize: 14,
   },
 });

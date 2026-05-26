@@ -240,6 +240,14 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
+        {/* Bouton Réglages en haut à droite */}
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          onPress={() => router.push("/settings" as any)}
+        >
+          <Text style={{ fontSize: 22 }}>⚙️</Text>
+        </TouchableOpacity>
+
         {/* HEADER */}
         <View style={styles.headerCard}>
           <TouchableOpacity
@@ -604,6 +612,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f0f8ff",
     paddingTop: Platform.OS === "android" ? 40 : 0,
+  },
+  settingsBtn: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+    elevation: 4,
   },
   headerCard: {
     flexDirection: "row",
