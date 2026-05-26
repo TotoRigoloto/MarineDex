@@ -12,7 +12,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   );
   process.exit(1);
 }
-
+//useless comemnt
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // 2. Lecture de ton fichier JSON
