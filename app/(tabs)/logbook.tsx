@@ -15,6 +15,7 @@ import {
   TRIP_COLORS,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import { deleteObsCloud } from "@/services/sync";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
@@ -27,6 +28,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -35,6 +37,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import MapView from "react-native-maps";
 
 type Mode = "trips" | "observations";
@@ -71,6 +74,11 @@ export default function LogbookScreen() {
     longitudeDelta: 10,
   });
 
+  // Recherche & filtres journal
+  const [search, setSearch] = useState("");
+  const [familyFilter, setFamilyFilter] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
   // États formulaire voyage
   const [tripFormVisible, setTripFormVisible] = useState(false);
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
@@ -100,6 +108,39 @@ export default function LogbookScreen() {
       console.error(e);
     }
   };
+
+  // Familles disponibles dans les observations courantes
+  const availableFamilies = useMemo(() => {
+    const set = new Set<string>();
+    logs.forEach((l) => {
+      const f = ENCYCLOPEDIA_DATA[l.speciesName]?.family;
+      if (f) set.add(f);
+    });
+    return [...set].sort();
+  }, [logs]);
+
+  // Liste filtrée + triée pour l'affichage
+  const visibleLogs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return logs.filter((l) => {
+      if (familyFilter) {
+        const f = ENCYCLOPEDIA_DATA[l.speciesName]?.family;
+        if (f !== familyFilter) return false;
+      }
+      if (q) {
+        const hay =
+          `${l.speciesName} ${l.location} ${l.notes ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [logs, search, familyFilter]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
+  }, []);
 
   // Statistiques par voyage (mémorisées pour ne pas recalculer à chaque render)
   const tripStats = useMemo(() => {
@@ -308,7 +349,10 @@ export default function LogbookScreen() {
         onPress: async () => {
           const updated = logs.filter((l) => l.id !== editingLogId);
           setLogs(updated);
-          await AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(updated));
+          await AsyncStorage.setItem(
+            STORAGE_KEYS.LOGS,
+            JSON.stringify(updated),
+          );
           setFormVisible(false);
         },
       },
@@ -328,7 +372,11 @@ export default function LogbookScreen() {
         discovered: isNew || (prev ? prev.discovered : false),
       };
     });
-    if (updated.some((a) => a.name.trim().toLowerCase() === name.trim().toLowerCase()))
+    if (
+      updated.some(
+        (a) => a.name.trim().toLowerCase() === name.trim().toLowerCase(),
+      )
+    )
       await AsyncStorage.setItem(STORAGE_KEYS.POKEDEX, JSON.stringify(updated));
   };
 
@@ -382,7 +430,7 @@ export default function LogbookScreen() {
       color: tripColor,
       notes: tripNotes,
       createdAt: editingTripId
-        ? trips.find((tt) => tt.id === editingTripId)?.createdAt ?? Date.now()
+        ? (trips.find((tt) => tt.id === editingTripId)?.createdAt ?? Date.now())
         : Date.now(),
     };
     const updated = editingTripId
@@ -405,9 +453,14 @@ export default function LogbookScreen() {
       >
         <View style={styles.tripCover}>
           {item.coverPhoto ? (
-            <Image source={{ uri: item.coverPhoto }} style={styles.tripCoverImg} />
+            <Image
+              source={{ uri: item.coverPhoto }}
+              style={styles.tripCoverImg}
+            />
           ) : (
-            <View style={[styles.tripCoverImg, { backgroundColor: item.color }]}>
+            <View
+              style={[styles.tripCoverImg, { backgroundColor: item.color }]}
+            >
               <Text style={{ fontSize: 48 }}>🌊</Text>
             </View>
           )}
@@ -437,6 +490,36 @@ export default function LogbookScreen() {
     );
   };
 
+  // Swipe-to-delete : action rouge à droite
+  const renderRightActions = (id: string) => (
+    <TouchableOpacity
+      style={styles.swipeDelete}
+      onPress={() => quickDeleteObs(id)}
+    >
+      <Text style={styles.swipeDeleteTxt}>🗑️{"\n"}Suppr.</Text>
+    </TouchableOpacity>
+  );
+
+  const quickDeleteObs = (id: string) => {
+    Alert.alert("Supprimer", "Supprimer cette observation ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          const updated = logs.filter((l) => l.id !== id);
+          setLogs(updated);
+          await AsyncStorage.setItem(
+            STORAGE_KEYS.LOGS,
+            JSON.stringify(updated),
+          );
+          // Best-effort cloud
+          deleteObsCloud(id).catch(() => {});
+        },
+      },
+    ]);
+  };
+
   const renderLogItem = ({ item }: { item: Observation }) => {
     const ency = ENCYCLOPEDIA_DATA[item.speciesName];
     let img;
@@ -446,32 +529,39 @@ export default function LogbookScreen() {
     const trip = item.tripId ? trips.find((t) => t.id === item.tripId) : null;
 
     return (
-      <TouchableOpacity onPress={() => openEditLogModal(item)} activeOpacity={0.7}>
-        <View style={styles.logCard}>
-          {img ? (
-            <Image source={img} style={styles.logImage} />
-          ) : (
-            <View style={[styles.logImage, styles.imgFallback]}>
-              <Text style={{ fontSize: 20 }}>?</Text>
-            </View>
-          )}
-          <View style={styles.logInfo}>
-            <Text style={styles.logSpecies}>{item.speciesName}</Text>
-            <Text style={styles.logDetail}>📅 {item.date}</Text>
-            <Text style={styles.logDetail}>
-              📍 {item.location} ({item.ocean})
-            </Text>
-            {trip && (
-              <View style={[styles.tripBadge, { backgroundColor: trip.color }]}>
-                <Text style={styles.tripBadgeTxt} numberOfLines={1}>
-                  🧳 {trip.name}
-                </Text>
+      <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+        <TouchableOpacity
+          onPress={() => openEditLogModal(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.logCard}>
+            {img ? (
+              <Image source={img} style={styles.logImage} />
+            ) : (
+              <View style={[styles.logImage, styles.imgFallback]}>
+                <Text style={{ fontSize: 20 }}>?</Text>
               </View>
             )}
+            <View style={styles.logInfo}>
+              <Text style={styles.logSpecies}>{item.speciesName}</Text>
+              <Text style={styles.logDetail}>📅 {item.date}</Text>
+              <Text style={styles.logDetail}>
+                📍 {item.location} ({item.ocean})
+              </Text>
+              {trip && (
+                <View
+                  style={[styles.tripBadge, { backgroundColor: trip.color }]}
+                >
+                  <Text style={styles.tripBadgeTxt} numberOfLines={1}>
+                    🧳 {trip.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.editPen}>✏️</Text>
           </View>
-          <Text style={styles.editPen}>✏️</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Swipeable>
     );
   };
 
@@ -482,7 +572,9 @@ export default function LogbookScreen() {
         <Text style={styles.headerTitle}>📔 Journal</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => (mode === "trips" ? openNewTripModal() : openNewLogModal())}
+          onPress={() =>
+            mode === "trips" ? openNewTripModal() : openNewLogModal()
+          }
         >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
@@ -495,13 +587,19 @@ export default function LogbookScreen() {
           onPress={() => setMode("trips")}
         >
           <Text
-            style={[styles.tabBtnTxt, mode === "trips" && styles.tabBtnTxtActive]}
+            style={[
+              styles.tabBtnTxt,
+              mode === "trips" && styles.tabBtnTxtActive,
+            ]}
           >
             🧳 Voyages ({trips.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabBtn, mode === "observations" && styles.tabBtnActive]}
+          style={[
+            styles.tabBtn,
+            mode === "observations" && styles.tabBtnActive,
+          ]}
           onPress={() => setMode("observations")}
         >
           <Text
@@ -519,9 +617,12 @@ export default function LogbookScreen() {
         trips.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={{ fontSize: 64 }}>🧳</Text>
-            <Text style={styles.emptyText}>Aucun voyage pour l&apos;instant</Text>
+            <Text style={styles.emptyText}>
+              Aucun voyage pour l&apos;instant
+            </Text>
             <Text style={styles.emptySubText}>
-              Crée ton premier storyboard{"\n"}(ex: &laquo;&nbsp;Mon voyage aux Philippines&nbsp;&raquo;)
+              Crée ton premier storyboard{"\n"}(ex: &laquo;&nbsp;Mon voyage aux
+              Philippines&nbsp;&raquo;)
             </Text>
             <TouchableOpacity style={styles.ctaBtn} onPress={openNewTripModal}>
               <Text style={styles.ctaBtnTxt}>+ Nouveau voyage</Text>
@@ -533,6 +634,14 @@ export default function LogbookScreen() {
             renderItem={renderTripCard}
             keyExtractor={(t) => t.id}
             contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#006994"]}
+                tintColor="#006994"
+              />
+            }
           />
         )
       ) : logs.length === 0 ? (
@@ -542,12 +651,92 @@ export default function LogbookScreen() {
           <Text style={styles.emptySubText}>Ajoute une observation (+)</Text>
         </View>
       ) : (
-        <FlatList
-          data={logs}
-          renderItem={renderLogItem}
-          keyExtractor={(l) => l.id}
-          contentContainerStyle={styles.list}
-        />
+        <>
+          {/* Barre de recherche */}
+          <View style={styles.searchWrap}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher une espèce, un lieu…"
+              placeholderTextColor="#999"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch("")} hitSlop={10}>
+                <Text style={styles.searchClear}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Chips de familles */}
+          {availableFamilies.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.familyChips}
+            >
+              <TouchableOpacity
+                style={[styles.famChip, !familyFilter && styles.famChipActive]}
+                onPress={() => setFamilyFilter(null)}
+              >
+                <Text
+                  style={[
+                    styles.famChipTxt,
+                    !familyFilter && styles.famChipTxtActive,
+                  ]}
+                >
+                  Toutes
+                </Text>
+              </TouchableOpacity>
+              {availableFamilies.map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[
+                    styles.famChip,
+                    familyFilter === f && styles.famChipActive,
+                  ]}
+                  onPress={() => setFamilyFilter(familyFilter === f ? null : f)}
+                >
+                  <Text
+                    style={[
+                      styles.famChipTxt,
+                      familyFilter === f && styles.famChipTxtActive,
+                    ]}
+                  >
+                    {f}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+          {visibleLogs.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={{ fontSize: 48 }}>🔍</Text>
+              <Text style={styles.emptyText}>Aucun résultat</Text>
+              <Text style={styles.emptySubText}>
+                Essaie d&apos;ajuster ta recherche ou tes filtres
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={visibleLogs}
+              renderItem={renderLogItem}
+              keyExtractor={(l) => l.id}
+              contentContainerStyle={styles.list}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={["#006994"]}
+                  tintColor="#006994"
+                />
+              }
+            />
+          )}
+        </>
       )}
 
       {/* ============ MODAL FORMULAIRE VOYAGE ============ */}
@@ -569,7 +758,10 @@ export default function LogbookScreen() {
                   onPress={pickTripCover}
                 >
                   {tripCover ? (
-                    <Image source={{ uri: tripCover }} style={styles.coverImg} />
+                    <Image
+                      source={{ uri: tripCover }}
+                      style={styles.coverImg}
+                    />
                   ) : (
                     <View
                       style={[styles.coverImg, { backgroundColor: tripColor }]}
@@ -668,7 +860,10 @@ export default function LogbookScreen() {
                                 setTrips(updatedTrips);
                                 setLogs(detached);
                                 await AsyncStorage.multiSet([
-                                  [STORAGE_KEYS.TRIPS, JSON.stringify(updatedTrips)],
+                                  [
+                                    STORAGE_KEYS.TRIPS,
+                                    JSON.stringify(updatedTrips),
+                                  ],
                                   [STORAGE_KEYS.LOGS, JSON.stringify(detached)],
                                 ]);
                                 setTripFormVisible(false);
@@ -718,7 +913,10 @@ export default function LogbookScreen() {
                 </Text>
 
                 <View style={{ alignItems: "center", marginBottom: 15 }}>
-                  <TouchableOpacity onPress={pickPhoto} style={styles.photoButton}>
+                  <TouchableOpacity
+                    onPress={pickPhoto}
+                    style={styles.photoButton}
+                  >
                     {selectedPhoto ? (
                       <Image
                         source={{ uri: selectedPhoto }}
@@ -827,7 +1025,9 @@ export default function LogbookScreen() {
                   ))}
                 </ScrollView>
 
-                <Text style={styles.label}>Localisation précise (Optionnel) :</Text>
+                <Text style={styles.label}>
+                  Localisation précise (Optionnel) :
+                </Text>
                 <View
                   style={{
                     flexDirection: "row",
@@ -835,7 +1035,10 @@ export default function LogbookScreen() {
                     marginBottom: 15,
                   }}
                 >
-                  <TouchableOpacity style={styles.locationBtn} onPress={captureGps}>
+                  <TouchableOpacity
+                    style={styles.locationBtn}
+                    onPress={captureGps}
+                  >
                     <Text style={styles.locationBtnText}>📍 Ma position</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -846,14 +1049,20 @@ export default function LogbookScreen() {
                   </TouchableOpacity>
                 </View>
                 {exactCoords ? (
-                  <Text style={styles.gpsOk}>✅ Coordonnées GPS enregistrées</Text>
+                  <Text style={styles.gpsOk}>
+                    ✅ Coordonnées GPS enregistrées
+                  </Text>
                 ) : (
-                  <Text style={styles.gpsKo}>(Par défaut : Centre du pays)</Text>
+                  <Text style={styles.gpsKo}>
+                    (Par défaut : Centre du pays)
+                  </Text>
                 )}
 
                 {oceanOptions.length > 0 ? (
                   <View style={{ marginBottom: 10 }}>
-                    <Text style={{ fontSize: 12, color: "orange" }}>Zone :</Text>
+                    <Text style={{ fontSize: 12, color: "orange" }}>
+                      Zone :
+                    </Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                       {oceanOptions.map((opt) => (
                         <TouchableOpacity
@@ -901,7 +1110,10 @@ export default function LogbookScreen() {
 
                 <View style={styles.btnRow}>
                   {editingLogId && (
-                    <TouchableOpacity style={styles.btnDelete} onPress={deleteLog}>
+                    <TouchableOpacity
+                      style={styles.btnDelete}
+                      onPress={deleteLog}
+                    >
                       <Text style={styles.btnText}>🗑️</Text>
                     </TouchableOpacity>
                   )}
@@ -933,7 +1145,9 @@ export default function LogbookScreen() {
             onRegionChangeComplete={(region) => setPickerRegion(region)}
           />
           <View style={styles.mapCrosshair}>
-            <Text style={{ fontSize: 40, color: "#dc3545", fontWeight: "bold" }}>
+            <Text
+              style={{ fontSize: 40, color: "#dc3545", fontWeight: "bold" }}
+            >
               📍
             </Text>
           </View>
@@ -944,7 +1158,10 @@ export default function LogbookScreen() {
           </View>
           <View style={styles.mapActions}>
             <TouchableOpacity
-              style={[styles.btnCancel, { backgroundColor: "white", elevation: 5 }]}
+              style={[
+                styles.btnCancel,
+                { backgroundColor: "white", elevation: 5 },
+              ]}
               onPress={closeMapAndReopenForm}
             >
               <Text style={[styles.btnText, { color: "black" }]}>Annuler</Text>
@@ -983,7 +1200,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 5,
   },
-  addButtonText: { color: "white", fontSize: 24, fontWeight: "bold", marginTop: -2 },
+  addButtonText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: -2,
+  },
 
   tabBar: {
     flexDirection: "row",
@@ -1005,6 +1227,57 @@ const styles = StyleSheet.create({
   tabBtnTxtActive: { color: "white" },
 
   list: { paddingHorizontal: 15, paddingBottom: 60 },
+
+  // Recherche & filtres
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    marginHorizontal: 15,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 25,
+    elevation: 2,
+  },
+  searchIcon: { fontSize: 16, marginRight: 8, opacity: 0.6 },
+  searchInput: { flex: 1, fontSize: 14, color: "#333", padding: 0 },
+  searchClear: { fontSize: 18, color: "#999", paddingHorizontal: 6 },
+  familyChips: {
+    paddingHorizontal: 15,
+    paddingBottom: 10,
+    gap: 6,
+    flexDirection: "row",
+  },
+  famChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    backgroundColor: "white",
+    marginRight: 6,
+  },
+  famChipActive: { backgroundColor: "#006994", borderColor: "#006994" },
+  famChipTxt: { fontSize: 12, color: "#444", fontWeight: "600" },
+  famChipTxtActive: { color: "white" },
+
+  // Swipe delete
+  swipeDelete: {
+    width: 80,
+    backgroundColor: "#dc3545",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    borderRadius: 15,
+    marginLeft: 8,
+  },
+  swipeDeleteTxt: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 11,
+    textAlign: "center",
+  },
 
   // Trip card
   tripCard: {
@@ -1190,7 +1463,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   locationBtnText: { color: "white", fontSize: 12, fontWeight: "bold" },
-  gpsOk: { textAlign: "center", color: "green", fontSize: 12, marginBottom: 10 },
+  gpsOk: {
+    textAlign: "center",
+    color: "green",
+    fontSize: 12,
+    marginBottom: 10,
+  },
   gpsKo: {
     textAlign: "center",
     color: "#888",
@@ -1198,7 +1476,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontStyle: "italic",
   },
-  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 },
+  colorRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 8,
+  },
   colorSwatch: {
     width: 32,
     height: 32,
@@ -1219,7 +1502,11 @@ const styles = StyleSheet.create({
   tripChipActive: { backgroundColor: "#006994", borderColor: "#006994" },
   tripChipTxt: { color: "#333", fontSize: 12, fontWeight: "600" },
 
-  btnRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
+  btnRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
   btnCancel: {
     flex: 1,
     backgroundColor: "#ccc",
