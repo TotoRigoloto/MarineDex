@@ -1,12 +1,15 @@
+require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
 const fs = require("fs");
 
-// 1. Tes identifiants Supabase
-// Trouve ces infos dans Settings > API
-const SUPABASE_URL = "https://giibfmhllophrouifedj.supabase.co";
-// ATTENTION : Utilise la "service_role" key (secrète) pour passer outre les règles de sécurité (RLS) lors de l'import
-const SUPABASE_SERVICE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpaWJmbWhsbG9waHJvdWlmZWRqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTU2NjIxNiwiZXhwIjoyMDkxMTQyMjE2fQ.rN-gv_lzSzyq0SJntTsdeXZr1y1A0hUkly2_mTawJF0";
+// 1. Tes identifiants Supabase (définis dans le fichier .env à la racine du projet)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error("❌ Variables d'environnement manquantes. Vérifie ton fichier .env");
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
