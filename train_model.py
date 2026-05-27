@@ -1,10 +1,13 @@
 import os
 
 import tensorflow as tf
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
-from tensorflow.keras.models import Model
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# Notes : enlever les tensorflow.keras.applications et mettre juste keras.applications pour éviter les conflits de versions
+from keras.applications import MobileNetV2
+from keras.layers import Dense, GlobalAveragePooling2D
+from keras.models import Model
+from keras.preprocessing.image import ImageDataGenerator
+
 
 # --- CONFIGURATION ---
 DATASET_DIR = 'dataset'  # Le dossier avec tes images

@@ -106,6 +106,41 @@ export default function LogbookScreen() {
   const [tripNotes, setTripNotes] = useState("");
   const [tripColor, setTripColor] = useState(TRIP_COLORS[0]);
 
+  // ====== Observation form ======
+  const resetDiveFields = useCallback(() => {
+    setDepthInput("");
+    setDurationInput("");
+    setVisibilityInput("");
+    setWaterTempInput("");
+    setShowDiveDetails(false);
+    setWeatherSnapshot(undefined);
+  }, []); // Vide car les setters d'état sont stables par défaut
+
+  const openNewLogModal = useCallback(
+    (tripId?: string) => {
+      setEditingLogId(null);
+      setSpeciesInput("");
+      setLocationInput("");
+      setOceanInput("");
+      setOceanOptions([]);
+      setDateInput(new Date().toLocaleDateString());
+      setNotesInput("");
+      setSelectedPhoto(undefined);
+      setFilteredSpecies([]);
+      setFilteredLocations([]);
+      setExactCoords(null);
+      setObsTripId(tripId);
+      resetDiveFields();
+      // Si on crée depuis un voyage, pré-remplir le pays
+      if (tripId) {
+        const t = trips.find((tt) => tt.id === tripId);
+        if (t) setLocationInput(t.country);
+      }
+      setFormVisible(true);
+    },
+    [trips, resetDiveFields],
+  ); // ✨ Dépend de 'trips' et de la fonction 'resetDiveFields'
+
   useFocusEffect(
     useCallback(() => {
       loadAll();
@@ -124,7 +159,7 @@ export default function LogbookScreen() {
         router.setParams({ newObsForTrip: undefined } as any);
       }, 300);
       return () => clearTimeout(t);
-    }, [params.newObsForTrip]),
+    }, [params.newObsForTrip, openNewLogModal]),
   );
 
   const loadAll = async () => {
@@ -228,38 +263,6 @@ export default function LogbookScreen() {
   const closeMapAndReopenForm = () => {
     setMapVisible(false);
     setTimeout(() => setFormVisible(true), 300);
-  };
-
-  // ====== Observation form ======
-  const resetDiveFields = () => {
-    setDepthInput("");
-    setDurationInput("");
-    setVisibilityInput("");
-    setWaterTempInput("");
-    setShowDiveDetails(false);
-    setWeatherSnapshot(undefined);
-  };
-
-  const openNewLogModal = (tripId?: string) => {
-    setEditingLogId(null);
-    setSpeciesInput("");
-    setLocationInput("");
-    setOceanInput("");
-    setOceanOptions([]);
-    setDateInput(new Date().toLocaleDateString());
-    setNotesInput("");
-    setSelectedPhoto(undefined);
-    setFilteredSpecies([]);
-    setFilteredLocations([]);
-    setExactCoords(null);
-    setObsTripId(tripId);
-    resetDiveFields();
-    // Si on crée depuis un voyage, pré-remplir le pays
-    if (tripId) {
-      const t = trips.find((tt) => tt.id === tripId);
-      if (t) setLocationInput(t.country);
-    }
-    setFormVisible(true);
   };
 
   const openEditLogModal = (item: Observation) => {
