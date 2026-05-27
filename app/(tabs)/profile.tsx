@@ -16,6 +16,7 @@ import {
   getAvatarById,
   STORAGE_KEYS,
 } from "@/constants/Storage";
+import * as H from "@/services/haptics";
 import {
   buildShareText,
   computeStreak,
@@ -342,6 +343,7 @@ export default function ProfileScreen() {
   const monthly = useMemo(() => monthlyGoals(logs), [logs]);
 
   const handleShareProfile = async () => {
+    H.tapHeavy();
     try {
       const text = buildShareText({
         username,
@@ -365,18 +367,21 @@ export default function ProfileScreen() {
     setBuddyId(n);
     setShowBuddySelector(false);
     await AsyncStorage.setItem(STORAGE_KEYS.BUDDY, n);
+    H.success();
     Alert.alert("Nouveau Compagnon !", `${n} voyage maintenant avec toi !`);
   };
   const saveAvatar = async (id: string) => {
     setAvatarId(id);
     setShowAvatarSelector(false);
     await AsyncStorage.setItem(STORAGE_KEYS.AVATAR_ID, id);
+    H.tapLight();
   };
   const saveName = async () => {
     if (!editName.trim()) return;
     setUsername(editName.trim());
     await AsyncStorage.setItem(STORAGE_KEYS.USERNAME, editName.trim());
     setShowNameEditor(false);
+    H.tapMedium();
   };
 
   const buddyAnimal = buddyId ? pokedex.find((a) => a.name === buddyId) : null;

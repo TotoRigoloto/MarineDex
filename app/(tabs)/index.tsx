@@ -13,9 +13,9 @@ import {
   Trip,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import * as H from "@/services/haptics";
 import { supabase } from "@/services/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
@@ -151,10 +151,9 @@ export default function HomeScreen() {
       setLocationInput("");
       setObsTripId(undefined);
       setShowValidationModal(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
-      );
+      H.success();
     } catch {
+      H.error();
       Alert.alert(
         "Erreur réseau",
         "Impossible de joindre le serveur IA. Vérifie ta connexion.",
@@ -193,6 +192,7 @@ export default function HomeScreen() {
           STORAGE_KEYS.POKEDEX,
           JSON.stringify(updatedAnimals),
         );
+        H.tapHeavy();
         Alert.alert("Bravo !", `Tu as débloqué : ${chosenSpecies} !`);
       }
 

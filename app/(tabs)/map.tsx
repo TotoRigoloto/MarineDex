@@ -13,6 +13,7 @@ import {
   Trip,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import * as H from "@/services/haptics";
 import { fetchProtectedZones, getZoneColor, ProtectedZone } from "@/services/mpa";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
@@ -221,6 +222,7 @@ export default function MapScreen() {
   };
 
   const openSheet = (p: MapPoint) => {
+    H.tapLight();
     setSelected(p);
     Animated.timing(sheetAnim, {
       toValue: 0,
@@ -238,6 +240,7 @@ export default function MapScreen() {
   };
 
   const zoomToCluster = (c: Extract<Cluster, { type: "cluster" }>) => {
+    H.tapMedium();
     const lats = c.points.map((p) => p.latitude);
     const lons = c.points.map((p) => p.longitude);
     const r: Region = {

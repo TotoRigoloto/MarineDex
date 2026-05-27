@@ -3,6 +3,7 @@
 // tester l'app et migrer plus tard les données vers un compte cloud.
 import { AVATAR_PRESETS, getAvatarById, STORAGE_KEYS } from "@/constants/Storage";
 import { signIn, signUp } from "@/services/auth";
+import * as H from "@/services/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -80,15 +81,17 @@ export default function LoginScreen() {
       ]);
 
       if (data.session) {
+        H.success();
         router.replace("/(tabs)");
       } else {
-        // Email confirmation activée → on demande de valider
+        H.tapMedium();
         setInfo(
           "Compte créé ! Vérifie tes emails pour valider, puis reviens te connecter.",
         );
         setStep("signin");
       }
     } catch (e: any) {
+      H.error();
       setError(e?.message ?? "Erreur lors de l'inscription");
     } finally {
       setLoading(false);
@@ -109,8 +112,10 @@ export default function LoginScreen() {
         [STORAGE_KEYS.HAS_ACCOUNT, "true"],
         [STORAGE_KEYS.ONBOARDING_DONE, "true"],
       ]);
+      H.success();
       router.replace("/(tabs)");
     } catch (e: any) {
+      H.error();
       setError(e?.message ?? "Identifiants incorrects");
     } finally {
       setLoading(false);

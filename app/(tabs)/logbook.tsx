@@ -15,6 +15,9 @@ import {
   TRIP_COLORS,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import EmptyState from "@/components/empty-state";
+import { SkeletonList } from "@/components/skeleton";
+import * as H from "@/services/haptics";
 import { deleteObsCloud } from "@/services/sync";
 import { fetchWeather, toIsoDate } from "@/services/weather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -48,6 +51,7 @@ export default function LogbookScreen() {
   const [logs, setLogs] = useState<Observation[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [mode, setMode] = useState<Mode>("trips");
+  const [loading, setLoading] = useState(true);
 
   // États formulaire observation
   const [formVisible, setFormVisible] = useState(false);
@@ -172,6 +176,8 @@ export default function LogbookScreen() {
       setTrips(savedTrips[1] ? JSON.parse(savedTrips[1]) : []);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -436,8 +442,10 @@ export default function LogbookScreen() {
       setLogs(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(updated));
       setFormVisible(false);
+      H.success();
     } catch (e) {
       console.error(e);
+      H.error();
     }
   };
 
@@ -608,6 +616,7 @@ export default function LogbookScreen() {
     setTrips(updated);
     await AsyncStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(updated));
     setTripFormVisible(false);
+    H.success();
   };
 
   // ====== Renderers ======
@@ -670,6 +679,7 @@ export default function LogbookScreen() {
   );
 
   const quickDeleteObs = (id: string) => {
+    H.warning();
     Alert.alert("Supprimer", "Supprimer cette observation ?", [
       { text: "Annuler", style: "cancel" },
       {
@@ -682,8 +692,8 @@ export default function LogbookScreen() {
             STORAGE_KEYS.LOGS,
             JSON.stringify(updated),
           );
-          // Best-effort cloud
           deleteObsCloud(id).catch(() => {});
+          H.tapHeavy();
         },
       },
     ]);
@@ -782,21 +792,22 @@ export default function LogbookScreen() {
         </TouchableOpacity>
       </View>
 
-      {mode === "trips" ? (
+      {loading ? (
+        <SkeletonList type={mode === "trips" ? "trip" : "obs"} count={3} />
+      ) : mode === "trips" ? (
         trips.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={{ fontSize: 64 }}>🧳</Text>
-            <Text style={styles.emptyText}>
-              Aucun voyage pour l&apos;instant
-            </Text>
-            <Text style={styles.emptySubText}>
-              Crée ton premier storyboard{"\n"}(ex: &laquo;&nbsp;Mon voyage aux
-              Philippines&nbsp;&raquo;)
-            </Text>
-            <TouchableOpacity style={styles.ctaBtn} onPress={openNewTripModal}>
-              <Text style={styles.ctaBtnTxt}>+ Nouveau voyage</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            emoji="🧳"
+            title="Aucun voyage pour l'instant"
+            subtitle={
+              "Crée ton premier storyboard\n(ex: « Mon voyage aux Philippines »)"
+            }
+            ctaLabel="+ Nouveau voyage"
+            onCtaPress={() => {
+              H.tapMedium();
+              openNewTripModal();
+            }}
+          />
         ) : (
           <FlatList
             data={trips}
@@ -814,11 +825,16 @@ export default function LogbookScreen() {
           />
         )
       ) : logs.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={{ fontSize: 64 }}>🐠</Text>
-          <Text style={styles.emptyText}>Ton carnet est vide</Text>
-          <Text style={styles.emptySubText}>Ajoute une observation (+)</Text>
-        </View>
+        <EmptyState
+          emoji="🐠"
+          title="Ton carnet est vide"
+          subtitle="Ajoute ta première observation marine !"
+          ctaLabel="+ Nouvelle observation"
+          onCtaPress={() => {
+            H.tapMedium();
+            openNewLogModal();
+          }}
+        />
       ) : (
         <>
           {/* Barre de recherche */}
