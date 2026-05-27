@@ -3,18 +3,23 @@
 // - Vue d'ensemble : couverture, stats, mini-carte, liste observations
 // - Timeline : observations groupées par jour (ordre chronologique)
 // - Galerie : grille des photos (utilisateur + encyclopédie)
-// - Bouton "Exporter en image" (placeholder vers task 11)
+// - Export : génère un PNG partageable du voyage
+import ShareableTripCard from "@/components/shareable-trip-card";
 import {
   ENCYCLOPEDIA_DATA,
   Observation,
   Trip,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import * as H from "@/services/haptics";
+import { captureAndShare } from "@/services/share-card";
 import { weatherEmoji } from "@/services/weather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Modal,
@@ -45,13 +50,17 @@ export default function TripDetailScreen() {
   const [logs, setLogs] = useState<Observation[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | undefined>(undefined);
+  const [exporting, setExporting] = useState(false);
+  const shareRef = useRef<View>(null);
 
   useFocusEffect(
     useCallback(() => {
       const load = async () => {
-        const [savedTrips, savedLogs] = await AsyncStorage.multiGet([
+        const [savedTrips, savedLogs, savedUsername] = await AsyncStorage.multiGet([
           STORAGE_KEYS.TRIPS,
           STORAGE_KEYS.LOGS,
+          STORAGE_KEYS.USERNAME,
         ]);
         const trips: Trip[] = savedTrips[1] ? JSON.parse(savedTrips[1]) : [];
         const allLogs: Observation[] = savedLogs[1]
@@ -59,10 +68,34 @@ export default function TripDetailScreen() {
           : [];
         setTrip(trips.find((t) => t.id === id) ?? null);
         setLogs(allLogs.filter((l) => l.tripId === id));
+        setUsername(savedUsername[1] ?? undefined);
       };
       load();
     }, [id]),
   );
+
+  const handleShare = async () => {
+    if (!trip) return;
+    H.tapHeavy();
+    setExporting(true);
+    try {
+      // Petit délai pour laisser le rendu off-screen se calmer avant capture
+      await new Promise((r) => setTimeout(r, 250));
+      await captureAndShare(shareRef, {
+        fileName: `marinedex-${trip.name}.png`,
+        dialogTitle: `Partager &laquo; ${trip.name} &raquo;`,
+      });
+      H.success();
+    } catch (e: any) {
+      H.error();
+      Alert.alert(
+        "Erreur",
+        e?.message ?? "Impossible de générer l'image de partage.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const uniqueSpecies = useMemo(
     () => Array.from(new Set(logs.map((l) => l.speciesName))),
@@ -191,7 +224,7 @@ export default function TripDetailScreen() {
               router.push(`/(tabs)/map?focusTrip=${trip.id}` as any)
             }
           >
-            <Text style={styles.ctaBarBtnTxt}>🗺️ Voir sur la carte</Text>
+            <Text style={styles.ctaBarBtnTxt}>🗺️ Carte</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.ctaBarBtn, { backgroundColor: "#0288D1" }]}
@@ -200,6 +233,17 @@ export default function TripDetailScreen() {
             }
           >
             <Text style={styles.ctaBarBtnTxt}>+ Observation</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ctaBarBtn, { backgroundColor: "#FFB300" }]}
+            onPress={handleShare}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.ctaBarBtnTxt}>📤 Partager</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -386,6 +430,20 @@ export default function TripDetailScreen() {
           <Text style={styles.lightboxClose}>✕  Toucher pour fermer</Text>
         </TouchableOpacity>
       </Modal>
+
+      {/* Composant hors-écran à capturer pour le partage. */}
+      {/* `pointerEvents=none` + position absolue hors-champ : invisible mais rendu. */}
+      <View
+        style={styles.offscreenCapture}
+        pointerEvents="none"
+      >
+        <ShareableTripCard
+          ref={shareRef}
+          trip={trip}
+          observations={logs}
+          username={username}
+        />
+      </View>
     </View>
   );
 }
@@ -732,5 +790,14 @@ const styles = StyleSheet.create({
     color: "white",
     marginTop: 20,
     fontSize: 13,
+  },
+
+  // Composant rendu hors écran (position négative hors viewport)
+  // pour qu'il existe dans la hiérarchie et soit capturable par view-shot.
+  // On ne met PAS opacity: 0 sinon Android skip le rendu.
+  offscreenCapture: {
+    position: "absolute",
+    top: -20000,
+    left: -20000,
   },
 });
