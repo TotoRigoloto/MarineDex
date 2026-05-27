@@ -358,7 +358,7 @@ export default function ProfileScreen() {
         streakWeeks: streak.weeks,
       });
       await Share.share({ message: text, title: "Mon profil MarineDex" });
-    } catch (e) {
+    } catch {
       // L'utilisateur a annulé : on ne montre pas d'erreur
     }
   };
