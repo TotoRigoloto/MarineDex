@@ -2,8 +2,9 @@
 // - Vrais avatars (presets variés avec couleur de fond + emoji personnage)
 // - Pseudo personnalisable
 // - Stats détaillées (voyages, observations, espèces, pays, photos)
+// - Streak (semaines consécutives) + objectifs hebdo/mensuels
 // - Badges enrichis avec progression visuelle
-// - Lien vers la page de l'association Revosea
+// - Partage du profil (texte) et lien vers Revosea
 import {
   Animal,
   initialAnimals,
@@ -15,6 +16,12 @@ import {
   getAvatarById,
   STORAGE_KEYS,
 } from "@/constants/Storage";
+import {
+  buildShareText,
+  computeStreak,
+  monthlyGoals,
+  weeklyGoals,
+} from "@/services/stats";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
@@ -25,6 +32,7 @@ import {
   Platform,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -64,31 +72,141 @@ interface BadgeDef {
 
 const BADGES_CONFIG: BadgeDef[] = [
   // Quantité
-  { id: "first_dive", title: "Première Bulle", description: "Première observation", icon: "💧", kind: "obs_count", target: 1 },
-  { id: "ten_obs", title: "Carnet Tenu", description: "10 observations enregistrées", icon: "📔", kind: "obs_count", target: 10 },
-  { id: "fifty_obs", title: "Explorateur Assidu", description: "50 observations", icon: "🔭", kind: "obs_count", target: 50 },
+  {
+    id: "first_dive",
+    title: "Première Bulle",
+    description: "Première observation",
+    icon: "💧",
+    kind: "obs_count",
+    target: 1,
+  },
+  {
+    id: "ten_obs",
+    title: "Carnet Tenu",
+    description: "10 observations enregistrées",
+    icon: "📔",
+    kind: "obs_count",
+    target: 10,
+  },
+  {
+    id: "fifty_obs",
+    title: "Explorateur Assidu",
+    description: "50 observations",
+    icon: "🔭",
+    kind: "obs_count",
+    target: 50,
+  },
 
   // Familles
-  { id: "shark_lover", title: "Grand Requin", description: "3 espèces de requins", icon: "🦈", kind: "family", target: 3, family: "Requin" },
-  { id: "whale_watcher", title: "Ami des Géants", description: "3 cétacés différents", icon: "🐋", kind: "family", target: 3, family: "Cétacé" },
-  { id: "turtle_fan", title: "Carapace", description: "2 espèces de tortues", icon: "🐢", kind: "family", target: 2, family: "Tortue" },
-  { id: "ray_rider", title: "Ailes de Mer", description: "2 espèces de raies", icon: "🪁", kind: "family", target: 2, family: "Raie" },
-  { id: "fish_expert", title: "Ichtyologue", description: "5 poissons identifiés", icon: "🐠", kind: "family", target: 5, family: "Poisson osseux" },
+  {
+    id: "shark_lover",
+    title: "Grand Requin",
+    description: "3 espèces de requins",
+    icon: "🦈",
+    kind: "family",
+    target: 3,
+    family: "Requin",
+  },
+  {
+    id: "whale_watcher",
+    title: "Ami des Géants",
+    description: "3 cétacés différents",
+    icon: "🐋",
+    kind: "family",
+    target: 3,
+    family: "Cétacé",
+  },
+  {
+    id: "turtle_fan",
+    title: "Carapace",
+    description: "2 espèces de tortues",
+    icon: "🐢",
+    kind: "family",
+    target: 2,
+    family: "Tortue",
+  },
+  {
+    id: "ray_rider",
+    title: "Ailes de Mer",
+    description: "2 espèces de raies",
+    icon: "🪁",
+    kind: "family",
+    target: 2,
+    family: "Raie",
+  },
+  {
+    id: "fish_expert",
+    title: "Ichtyologue",
+    description: "5 poissons identifiés",
+    icon: "🐠",
+    kind: "family",
+    target: 5,
+    family: "Poisson osseux",
+  },
 
   // Géographie
-  { id: "globetrotter", title: "Globetrotter", description: "Visite 3 pays", icon: "🌍", kind: "countries", target: 3 },
-  { id: "world_tour", title: "Tour du Monde", description: "Visite 7 pays", icon: "✈️", kind: "countries", target: 7 },
+  {
+    id: "globetrotter",
+    title: "Globetrotter",
+    description: "Visite 3 pays",
+    icon: "🌍",
+    kind: "countries",
+    target: 3,
+  },
+  {
+    id: "world_tour",
+    title: "Tour du Monde",
+    description: "Visite 7 pays",
+    icon: "✈️",
+    kind: "countries",
+    target: 7,
+  },
 
   // Voyages
-  { id: "first_trip", title: "Premier Voyage", description: "Crée ton premier voyage", icon: "🧳", kind: "trip_count", target: 1 },
-  { id: "trip_master", title: "Grand Voyageur", description: "5 voyages documentés", icon: "🗺️", kind: "trip_count", target: 5 },
+  {
+    id: "first_trip",
+    title: "Premier Voyage",
+    description: "Crée ton premier voyage",
+    icon: "🧳",
+    kind: "trip_count",
+    target: 1,
+  },
+  {
+    id: "trip_master",
+    title: "Grand Voyageur",
+    description: "5 voyages documentés",
+    icon: "🗺️",
+    kind: "trip_count",
+    target: 5,
+  },
 
   // Rareté
-  { id: "rare_find", title: "Chasseur de Légendes", description: "Observe une espèce rare", icon: "✨", kind: "rarity", target: 1 },
-  { id: "legend_3", title: "Triple Légende", description: "3 espèces rares", icon: "🌟", kind: "rarity", target: 3 },
+  {
+    id: "rare_find",
+    title: "Chasseur de Légendes",
+    description: "Observe une espèce rare",
+    icon: "✨",
+    kind: "rarity",
+    target: 1,
+  },
+  {
+    id: "legend_3",
+    title: "Triple Légende",
+    description: "3 espèces rares",
+    icon: "🌟",
+    kind: "rarity",
+    target: 3,
+  },
 
   // Photos
-  { id: "photographer", title: "Œil d'Or", description: "10 photos personnelles", icon: "📸", kind: "photos", target: 10 },
+  {
+    id: "photographer",
+    title: "Œil d'Or",
+    description: "10 photos personnelles",
+    icon: "📸",
+    kind: "photos",
+    target: 10,
+  },
 ];
 
 export default function ProfileScreen() {
@@ -120,7 +238,10 @@ export default function ProfileScreen() {
             STORAGE_KEYS.USERNAME,
             STORAGE_KEYS.TRIPS,
           ]);
-          const map = Object.fromEntries(stored) as Record<string, string | null>;
+          const map = Object.fromEntries(stored) as Record<
+            string,
+            string | null
+          >;
 
           const parsedLogs: Observation[] = map[STORAGE_KEYS.LOGS]
             ? JSON.parse(map[STORAGE_KEYS.LOGS]!)
@@ -162,8 +283,7 @@ export default function ProfileScreen() {
   const calculateXp = (animals: Animal[], obs: Observation[], tps: Trip[]) => {
     let xp = 0;
     animals.forEach((a) => {
-      if (a.discovered)
-        xp += a.rarity === 3 ? 500 : a.rarity === 2 ? 250 : 100;
+      if (a.discovered) xp += a.rarity === 3 ? 500 : a.rarity === 2 ? 250 : 100;
     });
     xp += obs.length * 50;
     xp += tps.length * 200; // bonus voyages
@@ -216,6 +336,31 @@ export default function ProfileScreen() {
     [logs, pokedex, trips],
   );
 
+  // ===== Streak + objectifs =====
+  const streak = useMemo(() => computeStreak(logs), [logs]);
+  const weekly = useMemo(() => weeklyGoals(logs, pokedex), [logs, pokedex]);
+  const monthly = useMemo(() => monthlyGoals(logs), [logs]);
+
+  const handleShareProfile = async () => {
+    try {
+      const text = buildShareText({
+        username,
+        rank: currentRank.name,
+        xp: userXp,
+        observations: logs.length,
+        species: pokedex.filter((a) => a.discovered).length,
+        countries: new Set(
+          logs.map((l) => l.location).filter((x) => x && x !== "Inconnu"),
+        ).size,
+        trips: trips.length,
+        streakWeeks: streak.weeks,
+      });
+      await Share.share({ message: text, title: "Mon profil MarineDex" });
+    } catch (e) {
+      // L'utilisateur a annulé : on ne montre pas d'erreur
+    }
+  };
+
   const saveBuddy = async (n: string) => {
     setBuddyId(n);
     setShowBuddySelector(false);
@@ -240,13 +385,23 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
-        {/* Bouton Réglages en haut à droite */}
-        <TouchableOpacity
-          style={styles.settingsBtn}
-          onPress={() => router.push("/settings" as any)}
-        >
-          <Text style={{ fontSize: 22 }}>⚙️</Text>
-        </TouchableOpacity>
+        {/* Boutons Partage + Réglages en haut à droite */}
+        <View style={styles.topActions}>
+          <TouchableOpacity
+            style={styles.topActionBtn}
+            onPress={handleShareProfile}
+            accessibilityLabel="Partager mon profil"
+          >
+            <Text style={{ fontSize: 20 }}>📤</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.topActionBtn}
+            onPress={() => router.push("/settings" as any)}
+            accessibilityLabel="Réglages"
+          >
+            <Text style={{ fontSize: 22 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* HEADER */}
         <View style={styles.headerCard}>
@@ -314,12 +469,55 @@ export default function ProfileScreen() {
           <StatBox v={pokedex.filter((a) => a.discovered).length} l="Espèces" />
           <StatBox
             v={
-              new Set(logs.map((l) => l.location).filter((x) => x && x !== "Inconnu"))
-                .size
+              new Set(
+                logs.map((l) => l.location).filter((x) => x && x !== "Inconnu"),
+              ).size
             }
             l="Pays"
           />
         </View>
+
+        {/* STREAK + OBJECTIFS */}
+        <View style={styles.streakRow}>
+          <View
+            style={[
+              styles.streakCard,
+              streak.activeThisWeek
+                ? { backgroundColor: "#FF6F00" }
+                : { backgroundColor: "#90A4AE" },
+            ]}
+          >
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={styles.streakValue}>{streak.weeks}</Text>
+            <Text style={styles.streakLabel}>
+              semaine{streak.weeks > 1 ? "s" : ""} d&apos;affilée
+            </Text>
+            {!streak.activeThisWeek && streak.weeks > 0 && (
+              <Text style={styles.streakHint}>
+                Observe avant dimanche pour la garder !
+              </Text>
+            )}
+            {streak.weeks === 0 && (
+              <Text style={styles.streakHint}>
+                Lance ton premier scan pour démarrer 🚀
+              </Text>
+            )}
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginLeft: 20, marginTop: 18 }]}>
+          🎯 Cette semaine
+        </Text>
+        {weekly.map((g, i) => (
+          <GoalRow key={i} goal={g} />
+        ))}
+
+        <Text style={[styles.sectionTitle, { marginLeft: 20, marginTop: 14 }]}>
+          📅 Ce mois-ci
+        </Text>
+        {monthly.map((g, i) => (
+          <GoalRow key={i} goal={g} />
+        ))}
 
         {/* COMPAGNON */}
         <View style={styles.buddyContainer}>
@@ -526,7 +724,9 @@ export default function ProfileScreen() {
                 ))}
               {pokedex.filter((a) => a.discovered).length === 0 && (
                 <View style={{ padding: 20 }}>
-                  <Text style={{ textAlign: "center", color: "#888", fontSize: 16 }}>
+                  <Text
+                    style={{ textAlign: "center", color: "#888", fontSize: 16 }}
+                  >
                     Tu n&apos;as pas encore découvert d&apos;animal ! 🕵️‍♂️
                   </Text>
                 </View>
@@ -563,7 +763,8 @@ export default function ProfileScreen() {
                   </Text>
                   <View style={styles.progressContainer}>
                     <Text style={styles.progressText}>
-                      Progression : {selectedBadge.current} / {selectedBadge.target}
+                      Progression : {selectedBadge.current} /{" "}
+                      {selectedBadge.target}
                     </Text>
                     <View style={styles.progressBarBg}>
                       <View
@@ -580,9 +781,13 @@ export default function ProfileScreen() {
                     </View>
                   </View>
                   {selectedBadge.unlocked ? (
-                    <Text style={styles.unlockedText}>✨ BADGE OBTENU ! ✨</Text>
+                    <Text style={styles.unlockedText}>
+                      ✨ BADGE OBTENU ! ✨
+                    </Text>
                   ) : (
-                    <Text style={styles.lockedText}>Encore un petit effort !</Text>
+                    <Text style={styles.lockedText}>
+                      Encore un petit effort !
+                    </Text>
                   )}
                   <TouchableOpacity
                     style={styles.closeButton}
@@ -607,23 +812,64 @@ const StatBox = ({ v, l }: { v: number; l: string }) => (
   </View>
 );
 
+const GoalRow = ({
+  goal,
+}: {
+  goal: {
+    label: string;
+    icon: string;
+    current: number;
+    target: number;
+    done: boolean;
+  };
+}) => {
+  const pct = Math.min(100, (goal.current / goal.target) * 100);
+  return (
+    <View style={styles.goalCard}>
+      <View style={styles.goalHeader}>
+        <Text style={styles.goalIcon}>{goal.icon}</Text>
+        <Text style={styles.goalLabel}>{goal.label}</Text>
+        <Text style={styles.goalProgress}>
+          {goal.current} / {goal.target}
+          {goal.done ? "  ✅" : ""}
+        </Text>
+      </View>
+      <View style={styles.goalBarBg}>
+        <View
+          style={[
+            styles.goalBarFill,
+            {
+              width: `${pct}%`,
+              backgroundColor: goal.done ? "#43A047" : "#0288D1",
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f0f8ff",
     paddingTop: Platform.OS === "android" ? 40 : 0,
   },
-  settingsBtn: {
+  topActions: {
     position: "absolute",
     top: 14,
     right: 14,
+    flexDirection: "row",
+    gap: 8,
+    zIndex: 10,
+  },
+  topActionBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
     backgroundColor: "rgba(255,255,255,0.95)",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
     elevation: 4,
   },
   headerCard: {
@@ -698,6 +944,62 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 18, fontWeight: "bold", color: "#006994" },
   statLabel: { fontSize: 10, color: "#666", marginTop: 2, textAlign: "center" },
+
+  // Streak
+  streakRow: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  streakCard: {
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    elevation: 3,
+  },
+  streakEmoji: { fontSize: 32 },
+  streakValue: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "white",
+    marginTop: 4,
+  },
+  streakLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.95)",
+    fontWeight: "600",
+  },
+  streakHint: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 6,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+
+  // Goals
+  goalCard: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 12,
+    elevation: 1,
+  },
+  goalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  goalIcon: { fontSize: 18, marginRight: 8, width: 24 },
+  goalLabel: { flex: 1, fontSize: 13, color: "#333", fontWeight: "600" },
+  goalProgress: { fontSize: 12, color: "#666", fontWeight: "bold" },
+  goalBarBg: {
+    height: 6,
+    backgroundColor: "#eee",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  goalBarFill: { height: "100%", borderRadius: 3 },
 
   buddyContainer: { marginTop: 20, paddingHorizontal: 20 },
   sectionTitle: {
