@@ -13,6 +13,40 @@ import {
   View,
 } from "react-native";
 
+// ============== CHARTE DU PLONGEUR ==============
+const CHARTE_TO_DO = [
+  { icon: "📏", text: "Garder ses distances" },
+  { icon: "🧴", text: 'Crème solaire "Reef Safe"' },
+  { icon: "🏅", text: "Opérateurs certifiés" },
+  { icon: "🚨", text: "Signaler les abus" },
+  { icon: "🤫", text: "Rester discret" },
+  { icon: "🗑️", text: "Rapporter ses déchets" },
+];
+
+const CHARTE_TO_AVOID = [
+  { icon: "✋", text: "Toucher les animaux" },
+  { icon: "🚧", text: "Bloquer la trajectoire" },
+  { icon: "🍔", text: "Nourrir les animaux" },
+  { icon: "🥾", text: "Marcher sur les coraux" },
+  { icon: "📸", text: "Utiliser le flash" },
+  { icon: "🐚", text: 'Rapporter des "souvenirs"' },
+];
+
+const CHARTE_ARTICLES = [
+  {
+    title: "Requins baleines : les règles d'or",
+    desc: "Distances, comportements à éviter, et conseils pour une observation responsable.",
+    url: "https://revosea.com/blog",
+    emoji: "🐋",
+  },
+  {
+    title: "Les coraux blancs ne sont pas morts",
+    desc: "Un corail blanchi est en détresse, pas forcément mort. Apprenez à le protéger.",
+    url: "https://revosea.com/blog",
+    emoji: "🪸",
+  },
+];
+
 // ============== CONTENU À REMPLIR ==============
 // Modifiez ces valeurs avec les informations réelles de Revosea.
 const REVOSEA = {
@@ -90,7 +124,9 @@ export default function RevoseaScreen() {
             style={styles.heroLink}
             onPress={() => openLink(REVOSEA.website)}
           >
-            <Text style={styles.heroLinkTxt}>🌐 {REVOSEA.website.replace("https://", "")}</Text>
+            <Text style={styles.heroLinkTxt}>
+              🌐 {REVOSEA.website.replace("https://", "")}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -124,6 +160,89 @@ export default function RevoseaScreen() {
               </View>
             </View>
           ))}
+        </View>
+
+        {/* CHARTE DU PLONGEUR */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🌊 Charte du Plongeur</Text>
+          <Text style={styles.sectionBody}>
+            Adopte les bons réflexes pour protéger l&apos;océan et ses
+            habitants.
+          </Text>
+
+          {/* À FAIRE */}
+          <View style={[styles.charteCard, { backgroundColor: "#f4fbf8" }]}>
+            <View style={[styles.charteHeader, { backgroundColor: "#a8e6cf" }]}>
+              <Text style={[styles.charteHeaderTxt, { color: "#2e7d32" }]}>
+                ✅ À FAIRE
+              </Text>
+            </View>
+            <View style={styles.charteGrid}>
+              {CHARTE_TO_DO.map((item, index) => (
+                <View key={index} style={styles.charteItem}>
+                  <View style={[styles.charteIcon, { borderColor: "#4CAF50" }]}>
+                    <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+                  </View>
+                  <Text style={styles.charteItemTxt}>{item.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* À ÉVITER */}
+          <View style={[styles.charteCard, { backgroundColor: "#fff5f5" }]}>
+            <View style={[styles.charteHeader, { backgroundColor: "#ffcccb" }]}>
+              <Text style={[styles.charteHeaderTxt, { color: "#d32f2f" }]}>
+                ❌ À ÉVITER
+              </Text>
+            </View>
+            <View style={styles.charteGrid}>
+              {CHARTE_TO_AVOID.map((item, index) => (
+                <View key={index} style={styles.charteItem}>
+                  <View style={[styles.charteIcon, { borderColor: "#d32f2f" }]}>
+                    <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+                    <Text style={styles.charteForbidden}>🚫</Text>
+                  </View>
+                  <Text style={styles.charteItemTxt}>{item.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* ARTICLES — Comprendre pour mieux protéger */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Comprendre pour mieux protéger
+          </Text>
+          <Text style={[styles.sectionBody, { marginBottom: 12 }]}>
+            Découvre les articles de Revosea
+          </Text>
+          {CHARTE_ARTICLES.map((article, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.articleCard}
+              onPress={() => openLink(article.url)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 30, marginRight: 15 }}>
+                {article.emoji}
+              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.articleTitle}>{article.title}</Text>
+                <Text style={styles.articleDesc}>{article.desc}</Text>
+              </View>
+              <Text style={{ fontSize: 20, color: "#006994", marginLeft: 10 }}>
+                →
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={styles.websiteBtn}
+            onPress={() => openLink("https://revosea.com")}
+          >
+            <Text style={styles.websiteBtnTxt}>🌍 Visiter Revosea.com</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ÉQUIPE (si renseignée) */}
@@ -198,9 +317,7 @@ export default function RevoseaScreen() {
           )}
         </View>
 
-        <Text style={styles.footer}>
-          Avec ❤️ depuis MarineDex
-        </Text>
+        <Text style={styles.footer}>Avec ❤️ depuis MarineDex</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -402,6 +519,94 @@ const styles = StyleSheet.create({
   },
   contactLabel: { fontSize: 11, color: "#999" },
   contactValue: { fontSize: 14, color: "#333", marginTop: 2 },
+
+  // Charte du Plongeur
+  charteCard: {
+    borderRadius: 15,
+    overflow: "hidden",
+    marginTop: 14,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  charteHeader: {
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  charteHeaderTxt: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  charteGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 14,
+  },
+  charteItem: {
+    width: "50%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    paddingRight: 8,
+  },
+  charteIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
+    marginRight: 10,
+    position: "relative",
+  },
+  charteItemTxt: {
+    flex: 1,
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "600",
+  },
+  charteForbidden: {
+    position: "absolute",
+    fontSize: 44,
+    opacity: 0.7,
+    color: "red",
+  },
+
+  // Articles Revosea
+  articleCard: {
+    flexDirection: "row",
+    backgroundColor: "#f6fbff",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  articleTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 3,
+  },
+  articleDesc: {
+    fontSize: 12,
+    color: "#666",
+    lineHeight: 16,
+  },
+  websiteBtn: {
+    backgroundColor: "#006994",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  websiteBtnTxt: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
 
   footer: {
     textAlign: "center",
