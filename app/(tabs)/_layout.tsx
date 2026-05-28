@@ -69,6 +69,8 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* Explore masqué — contenu migré dans revosea.tsx */}
+      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }
