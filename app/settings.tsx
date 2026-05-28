@@ -67,15 +67,15 @@ export default function SettingsScreen() {
       const stored = await AsyncStorage.multiGet([
         STORAGE_KEYS.USERNAME,
         STORAGE_KEYS.USER_EMAIL,
-        "last_sync_at",
-        "notifications_enabled",
+        STORAGE_KEYS.LAST_SYNC_AT,
+        STORAGE_KEYS.NOTIFICATIONS_ENABLED,
       ]);
       const map = Object.fromEntries(stored) as Record<string, string | null>;
       if (map[STORAGE_KEYS.USERNAME]) setUsername(map[STORAGE_KEYS.USERNAME]!);
       if (map[STORAGE_KEYS.USER_EMAIL] || user?.email)
         setEmail(map[STORAGE_KEYS.USER_EMAIL] || user?.email || "");
-      if (map["last_sync_at"]) setLastSync(map["last_sync_at"]);
-      setNotifications(map["notifications_enabled"] === "true");
+      if (map[STORAGE_KEYS.LAST_SYNC_AT]) setLastSync(map[STORAGE_KEYS.LAST_SYNC_AT]);
+      setNotifications(map[STORAGE_KEYS.NOTIFICATIONS_ENABLED] === "true");
     };
     load();
   }, [user]);
@@ -104,7 +104,7 @@ export default function SettingsScreen() {
     if (r.ok) {
       const now = new Date().toLocaleString();
       setLastSync(now);
-      await AsyncStorage.setItem("last_sync_at", now);
+      await AsyncStorage.setItem(STORAGE_KEYS.LAST_SYNC_AT, now);
       Alert.alert(
         "Sync terminée ✓",
         `Envoyés : ${r.pushedTrips} voyages, ${r.pushedObs} obs.\nReçus : ${r.pulledTrips} voyages, ${r.pulledObs} obs.`,
@@ -193,8 +193,8 @@ export default function SettingsScreen() {
                 STORAGE_KEYS.USER_CREATED_AT,
                 STORAGE_KEYS.ONBOARDING_DONE,
                 STORAGE_KEYS.HAS_ACCOUNT,
-                "last_sync_at",
-                "notifications_enabled",
+                STORAGE_KEYS.LAST_SYNC_AT,
+                STORAGE_KEYS.NOTIFICATIONS_ENABLED,
               ]);
               await signOut();
               router.replace("/login");
@@ -276,7 +276,10 @@ export default function SettingsScreen() {
                 value={notifications}
                 onValueChange={async (v) => {
                   setNotifications(v);
-                  await AsyncStorage.setItem("notifications_enabled", String(v));
+                  await AsyncStorage.setItem(
+                    STORAGE_KEYS.NOTIFICATIONS_ENABLED,
+                    String(v),
+                  );
                 }}
                 trackColor={{ false: "#ccc", true: "#006994" }}
               />

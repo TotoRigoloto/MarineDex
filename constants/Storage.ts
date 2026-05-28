@@ -19,6 +19,10 @@ export const STORAGE_KEYS = {
   // Flags
   ONBOARDING_DONE: "onboarding_done",
   HAS_ACCOUNT: "has_account",
+
+  // Préférences / état session
+  LAST_SYNC_AT: "last_sync_at",
+  NOTIFICATIONS_ENABLED: "notifications_enabled",
 } as const;
 
 // --- AVATARS PRÉDÉFINIS ---
