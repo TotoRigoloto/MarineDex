@@ -207,7 +207,7 @@ export default function HomeScreen() {
       }
 
       const newLog: Observation = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         speciesName: chosenSpecies,
         date: new Date().toLocaleDateString(),
         userPhoto: tempPhotoUri,

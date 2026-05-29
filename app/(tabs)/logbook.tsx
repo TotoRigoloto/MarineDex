@@ -11,7 +11,6 @@ import {
   ENCYCLOPEDIA_DATA,
   GEOGRAPHY_DB,
   getTripCountries,
-  getTripOceans,
   initialAnimals,
   Observation,
   TIME_OF_DAY_LABELS,
@@ -463,7 +462,7 @@ export default function LogbookScreen() {
     };
 
     const data: Observation = {
-      id: editingLogId || Date.now().toString(),
+      id: editingLogId || crypto.randomUUID(),
       speciesName: speciesInput,
       date: dateInput,
       location: locationInput || "Inconnu",
@@ -651,30 +650,29 @@ export default function LogbookScreen() {
     [trips],
   );
 
-  const openEditDiveModal = useCallback(
-    (dive: Dive) => {
-      setEditingDiveId(dive.id);
-      setDiveDateInput(dive.date);
-      setDiveTimeOfDay(dive.timeOfDay);
-      setDiveCountryInput(dive.country);
-      checkDiveOcean(dive.country);
-      setDiveOceanInput(dive.ocean);
-      setDiveDepthInput(dive.depthMax?.toString() ?? "");
-      setDiveDurationInput(dive.durationMin?.toString() ?? "");
-      setDiveVisibilityInput(dive.visibilityM?.toString() ?? "");
-      setDiveWaterTempInput(dive.waterTempC?.toString() ?? "");
-      setDiveNotesInput(dive.notes ?? "");
-      setDiveTripId(dive.tripId);
-      setDiveCoords(
-        dive.latitude && dive.longitude
-          ? { latitude: dive.latitude, longitude: dive.longitude }
-          : null,
-      );
-      setDiveWeatherSnapshot(dive.weather);
-      setDiveFormVisible(true);
-    },
-    [],
-  );
+  // Édition d'une plongée existante (long-press sur une dive card)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const openEditDiveModal = (dive: Dive) => {
+    setEditingDiveId(dive.id);
+    setDiveDateInput(dive.date);
+    setDiveTimeOfDay(dive.timeOfDay);
+    setDiveCountryInput(dive.country);
+    checkDiveOcean(dive.country);
+    setDiveOceanInput(dive.ocean);
+    setDiveDepthInput(dive.depthMax?.toString() ?? "");
+    setDiveDurationInput(dive.durationMin?.toString() ?? "");
+    setDiveVisibilityInput(dive.visibilityM?.toString() ?? "");
+    setDiveWaterTempInput(dive.waterTempC?.toString() ?? "");
+    setDiveNotesInput(dive.notes ?? "");
+    setDiveTripId(dive.tripId);
+    setDiveCoords(
+      dive.latitude && dive.longitude
+        ? { latitude: dive.latitude, longitude: dive.longitude }
+        : null,
+    );
+    setDiveWeatherSnapshot(dive.weather);
+    setDiveFormVisible(true);
+  };
 
   const handleSaveDive = async () => {
     if (!diveCountryInput.trim()) {
@@ -695,7 +693,7 @@ export default function LogbookScreen() {
     };
 
     const dive: Dive = {
-      id: editingDiveId || Date.now().toString(),
+      id: editingDiveId || crypto.randomUUID(),
       tripId: diveTripId,
       date: diveDateInput || new Date().toLocaleDateString(),
       timeOfDay: diveTimeOfDay,
@@ -860,7 +858,7 @@ export default function LogbookScreen() {
     }
 
     const t: Trip = {
-      id: editingTripId || Date.now().toString(),
+      id: editingTripId || crypto.randomUUID(),
       name: tripName.trim(),
       country: tripCountries[0], // Rétro-compat : premier pays
       countries: tripCountries,
