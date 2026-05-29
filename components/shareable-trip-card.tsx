@@ -9,6 +9,37 @@ import {
 import React, { forwardRef } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
+// Déduit les étapes du voyage (pays distincts visités, dans l'ordre chrono des obs)
+function buildRouteSteps(
+  trip: Trip,
+  observations: Observation[],
+): string[] {
+  // Essaie d'extraire les pays dans l'ordre des observations
+  const seen = new Set<string>();
+  const steps: string[] = [];
+  [...observations]
+    .sort((a, b) => {
+      const da = parseDmySimple(a.date);
+      const db = parseDmySimple(b.date);
+      return da - db;
+    })
+    .forEach((o) => {
+      if (o.location && !seen.has(o.location)) {
+        seen.add(o.location);
+        steps.push(o.location);
+      }
+    });
+  if (steps.length > 0) return steps.slice(0, 6);
+  // Fallback sur les pays du voyage
+  return getTripCountries(trip).slice(0, 6);
+}
+
+function parseDmySimple(dmy: string): number {
+  const m = dmy?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return 0;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
+}
+
 interface Props {
   trip: Trip;
   observations: Observation[];
@@ -23,6 +54,7 @@ const ShareableTripCard = forwardRef<View, Props>(
     const uniqueSpecies = [
       ...new Set(observations.map((o) => o.speciesName)),
     ];
+    const routeSteps = buildRouteSteps(trip, observations);
     // Top 4 espèces avec image (priorité photo user, sinon encyclopédie)
     const topSpecies = uniqueSpecies.slice(0, 4).map((name) => {
       const obs = observations.find((o) => o.speciesName === name);
@@ -94,6 +126,42 @@ const ShareableTripCard = forwardRef<View, Props>(
           <StatBig value={String(uniqueSpecies.length)} label="Espèces" />
           <StatBig value={String(days)} label="Jours" />
         </View>
+
+        {/* Route strip — trajet visuel */}
+        {routeSteps.length > 1 && (
+          <View style={styles.routeStrip}>
+            {routeSteps.map((step, i) => (
+              <React.Fragment key={i}>
+                <View style={styles.routeStepWrap}>
+                  <View
+                    style={[
+                      styles.routeDot,
+                      { backgroundColor: trip.color },
+                    ]}
+                  >
+                    <Text style={styles.routeDotText}>{i + 1}</Text>
+                  </View>
+                  <Text style={styles.routeStepLabel} numberOfLines={1}>
+                    {step}
+                  </Text>
+                </View>
+                {i < routeSteps.length - 1 && (
+                  <View style={styles.routeLineWrap}>
+                    {[0, 1, 2].map((d) => (
+                      <View
+                        key={d}
+                        style={[
+                          styles.routeLineDash,
+                          { backgroundColor: trip.color },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
+              </React.Fragment>
+            ))}
+          </View>
+        )}
 
         {/* Top espèces */}
         {topSpecies.length > 0 && (
@@ -236,6 +304,52 @@ const styles = StyleSheet.create({
     fontSize: 22,
     marginTop: 4,
     fontWeight: "600",
+  },
+
+  routeStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 30,
+    paddingHorizontal: 10,
+  },
+  routeStepWrap: {
+    alignItems: "center",
+    maxWidth: 140,
+  },
+  routeDot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  routeDotText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  routeStepLabel: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 16,
+    marginTop: 6,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  routeLineWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginHorizontal: 4,
+    marginBottom: 24,
+  },
+  routeLineDash: {
+    width: 10,
+    height: 3,
+    borderRadius: 2,
+    opacity: 0.6,
   },
 
   speciesGrid: {
