@@ -7,6 +7,7 @@
 // - Export : génère un PNG partageable du voyage
 import ShareableTripCard from "@/components/shareable-trip-card";
 import {
+  COUNTRY_COORDINATES,
   Dive,
   ENCYCLOPEDIA_DATA,
   getTripCountries,
@@ -35,7 +36,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 
 const { width } = Dimensions.get("window");
 
@@ -59,6 +60,7 @@ export default function TripDetailScreen() {
   const [username, setUsername] = useState<string | undefined>(undefined);
   const [exporting, setExporting] = useState(false);
   const shareRef = useRef<View>(null);
+  const mapRef = useRef<MapView>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -134,6 +136,48 @@ export default function TripDetailScreen() {
       longitudeDelta: Math.max(0.5, (maxLon - minLon) * 1.5),
     };
   }, [logs]);
+
+  // Points de route pour la polyline Strava — triés chronologiquement
+  const routePoints = useMemo(() => {
+    // Observations avec coordonnées, triées par date
+    const located = [...logs]
+      .filter((l) => l.latitude && l.longitude)
+      .sort((a, b) => {
+        const da = parseDate(a.date)?.getTime() ?? 0;
+        const db = parseDate(b.date)?.getTime() ?? 0;
+        return da - db;
+      });
+
+    if (located.length > 0) {
+      return located.map((l, i) => ({
+        latitude: l.latitude!,
+        longitude: l.longitude!,
+        label: String(i + 1),
+        date: l.date,
+        species: l.speciesName,
+      }));
+    }
+
+    // Fallback multi-pays : utiliser les coordonnées des pays du voyage
+    if (!trip) return [];
+    const countries = getTripCountries(trip);
+    const pts: { latitude: number; longitude: number; label: string; date: string; species: string }[] = [];
+    countries.forEach((c, i) => {
+      const oceans = COUNTRY_COORDINATES[c];
+      if (!oceans) return;
+      const first = Object.values(oceans)[0];
+      if (first) {
+        pts.push({
+          latitude: first.latitude,
+          longitude: first.longitude,
+          label: String(i + 1),
+          date: "",
+          species: c,
+        });
+      }
+    });
+    return pts;
+  }, [logs, trip]);
 
   // Timeline : groupes par jour
   const timelineGroups = useMemo(() => {
@@ -282,28 +326,82 @@ export default function TripDetailScreen() {
         {/* CONTENU ONGLET */}
         {tab === "overview" && (
           <>
-            {/* MINI CARTE */}
-            {logs.some((l) => l.latitude && l.longitude) && (
+            {/* CARTE STRAVA — trajet entre spots */}
+            {routePoints.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>🗺️ Sur la carte</Text>
-                <View style={styles.mapWrap}>
+                <Text style={styles.sectionTitle}>🗺️ Trajet du voyage</Text>
+                <View style={[styles.mapWrap, { height: 260 }]}>
                   <MapView
+                    ref={mapRef}
                     style={{ width: "100%", height: "100%" }}
                     initialRegion={region}
+                    onMapReady={() => {
+                      if (routePoints.length > 1 && mapRef.current) {
+                        mapRef.current.fitToCoordinates(
+                          routePoints.map((p) => ({
+                            latitude: p.latitude,
+                            longitude: p.longitude,
+                          })),
+                          {
+                            edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+                            animated: false,
+                          },
+                        );
+                      }
+                    }}
                     pointerEvents="none"
                   >
-                    {logs
-                      .filter((l) => l.latitude && l.longitude)
-                      .map((l) => (
-                        <Marker
-                          key={l.id}
-                          coordinate={{
-                            latitude: l.latitude!,
-                            longitude: l.longitude!,
+                    {/* Polyline pointillée entre les spots */}
+                    {routePoints.length > 1 && (
+                      <Polyline
+                        coordinates={routePoints.map((p) => ({
+                          latitude: p.latitude,
+                          longitude: p.longitude,
+                        }))}
+                        strokeColor={trip.color}
+                        strokeWidth={3}
+                        lineDashPattern={[6, 4]}
+                      />
+                    )}
+                    {/* Markers ronds numérotés */}
+                    {routePoints.map((pt, i) => (
+                      <Marker
+                        key={`route-${i}`}
+                        coordinate={{
+                          latitude: pt.latitude,
+                          longitude: pt.longitude,
+                        }}
+                        anchor={{ x: 0.5, y: 0.5 }}
+                      >
+                        <View
+                          style={{
+                            backgroundColor: trip.color,
+                            width: 26,
+                            height: 26,
+                            borderRadius: 13,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            borderWidth: 2,
+                            borderColor: "white",
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 2,
+                            elevation: 3,
                           }}
-                          pinColor={trip.color}
-                        />
-                      ))}
+                        >
+                          <Text
+                            style={{
+                              color: "white",
+                              fontSize: 11,
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {pt.label}
+                          </Text>
+                        </View>
+                      </Marker>
+                    ))}
                   </MapView>
                   <TouchableOpacity
                     style={styles.openMapBtn}
