@@ -1508,7 +1508,10 @@ export interface Observation {
 export interface Trip {
   id: string;
   name: string; // Ex: "Voyage aux Philippines"
-  country: string; // Pays principal
+  country: string; // Pays principal (rétro-compat)
+  countries?: string[]; // Multi-pays : liste complète
+  ocean?: string; // Océan principal (rétro-compat, déduit du pays)
+  oceans?: string[]; // Multi-océans : déduits des pays sélectionnés
   startDate: string; // DD/MM/YYYY
   endDate: string; // DD/MM/YYYY
   coverPhoto?: string; // Photo de couverture (URI)
@@ -1516,6 +1519,7 @@ export interface Trip {
   notes?: string;
   createdAt: number; // timestamp pour le tri
 }
+
 
 // Palette de couleurs proposées pour les voyages (cohérente avec le thème bleu)
 export const TRIP_COLORS = [
@@ -1871,3 +1875,20 @@ export const GEOGRAPHY_DB: Record<string, string[]> = Object.fromEntries(
     Object.keys(oceans),
   ]),
 );
+
+// Helpers multi-pays pour un Trip
+export function getTripCountries(trip: Trip): string[] {
+  return trip.countries?.length ? trip.countries : [trip.country];
+}
+
+export function getTripOceans(trip: Trip): string[] {
+  if (trip.oceans?.length) return trip.oceans;
+  if (trip.ocean) return [trip.ocean];
+  // Déduit depuis les pays
+  const oceans = new Set<string>();
+  getTripCountries(trip).forEach((c) => {
+    const list = GEOGRAPHY_DB[c];
+    if (list) list.forEach((o) => oceans.add(o));
+  });
+  return [...oceans];
+}

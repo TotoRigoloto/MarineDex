@@ -2,6 +2,7 @@
 // Format 1080x1350 (post Instagram carré-ish), lisible et beau sur tous les réseaux.
 import {
   ENCYCLOPEDIA_DATA,
+  getTripCountries,
   Observation,
   Trip,
 } from "@/constants/MarineData";
@@ -80,7 +81,9 @@ const ShareableTripCard = forwardRef<View, Props>(
         <Text style={styles.title} numberOfLines={2}>
           {trip.name}
         </Text>
-        <Text style={styles.country}>📍 {trip.country}</Text>
+        <Text style={styles.country}>
+          📍 {getTripCountries(trip).join(" · ")}
+        </Text>
         <Text style={styles.dates}>
           {trip.startDate} → {trip.endDate}
         </Text>

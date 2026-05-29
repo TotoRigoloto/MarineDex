@@ -18,6 +18,8 @@ interface DbTrip {
   user_id: string;
   name: string;
   country: string | null;
+  countries: string[] | null; // Multi-pays
+  oceans: string[] | null; // Multi-océans
   start_date: string | null;
   end_date: string | null;
   cover_photo_path: string | null;
@@ -54,6 +56,8 @@ function localTripToDb(t: Trip, userId: string): Omit<DbTrip, "created_at" | "up
     user_id: userId,
     name: t.name,
     country: t.country || null,
+    countries: t.countries?.length ? t.countries : null,
+    oceans: t.oceans?.length ? t.oceans : null,
     start_date: t.startDate || null,
     end_date: t.endDate || null,
     cover_photo_path: t.coverPhoto || null,
@@ -67,6 +71,8 @@ function dbTripToLocal(t: DbTrip): Trip {
     id: t.id,
     name: t.name,
     country: t.country ?? "",
+    countries: t.countries ?? undefined,
+    oceans: t.oceans ?? undefined,
     startDate: t.start_date ?? "",
     endDate: t.end_date ?? "",
     coverPhoto: t.cover_photo_path ?? undefined,

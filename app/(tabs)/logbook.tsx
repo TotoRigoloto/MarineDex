@@ -9,6 +9,8 @@ import {
   Animal,
   ENCYCLOPEDIA_DATA,
   GEOGRAPHY_DB,
+  getTripCountries,
+  getTripOceans,
   initialAnimals,
   Observation,
   Trip,
@@ -100,7 +102,8 @@ export default function LogbookScreen() {
   const [tripFormVisible, setTripFormVisible] = useState(false);
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
   const [tripName, setTripName] = useState("");
-  const [tripCountry, setTripCountry] = useState("");
+  const [tripCountries, setTripCountries] = useState<string[]>([]);
+  const [tripCountryInput, setTripCountryInput] = useState("");
   const [tripCountrySuggestions, setTripCountrySuggestions] = useState<
     string[]
   >([]);
@@ -135,10 +138,13 @@ export default function LogbookScreen() {
       setExactCoords(null);
       setObsTripId(tripId);
       resetDiveFields();
-      // Si on crée depuis un voyage, pré-remplir le pays
+      // Si on crée depuis un voyage mono-pays, pré-remplir le pays
       if (tripId) {
         const t = trips.find((tt) => tt.id === tripId);
-        if (t) setLocationInput(t.country);
+        if (t) {
+          const countries = getTripCountries(t);
+          if (countries.length === 1) setLocationInput(countries[0]);
+        }
       }
       setFormVisible(true);
     },
@@ -173,7 +179,17 @@ export default function LogbookScreen() {
         STORAGE_KEYS.TRIPS,
       ]);
       setLogs(savedLogs[1] ? JSON.parse(savedLogs[1]) : []);
-      setTrips(savedTrips[1] ? JSON.parse(savedTrips[1]) : []);
+      // Migration douce : normaliser les anciens trips sans countries[]
+      const rawTrips: Trip[] = savedTrips[1]
+        ? JSON.parse(savedTrips[1])
+        : [];
+      const migratedTrips = rawTrips.map((t) => {
+        if (!t.countries?.length && t.country) {
+          return { ...t, countries: [t.country] };
+        }
+        return t;
+      });
+      setTrips(migratedTrips);
     } catch (e) {
       console.error(e);
     } finally {
@@ -493,7 +509,8 @@ export default function LogbookScreen() {
   const openNewTripModal = () => {
     setEditingTripId(null);
     setTripName("");
-    setTripCountry("");
+    setTripCountries([]);
+    setTripCountryInput("");
     setTripCountrySuggestions([]);
     setTripStart("");
     setTripEnd("");
@@ -506,7 +523,8 @@ export default function LogbookScreen() {
   const openEditTripModal = (t: Trip) => {
     setEditingTripId(t.id);
     setTripName(t.name);
-    setTripCountry(t.country);
+    setTripCountries(getTripCountries(t));
+    setTripCountryInput("");
     setTripCountrySuggestions([]);
     setTripStart(t.startDate);
     setTripEnd(t.endDate);
@@ -553,6 +571,26 @@ export default function LogbookScreen() {
     return d;
   };
 
+  // Ajouter un pays à la sélection multi-pays
+  const addTripCountry = useCallback(
+    (country: string) => {
+      const key = Object.keys(GEOGRAPHY_DB).find(
+        (k) => k.toLowerCase() === country.trim().toLowerCase(),
+      );
+      if (!key || tripCountries.includes(key)) return;
+      setTripCountries((prev) => [...prev, key]);
+      setTripCountryInput("");
+      setTripCountrySuggestions([]);
+      H.tapLight();
+    },
+    [tripCountries],
+  );
+
+  const removeTripCountry = useCallback((country: string) => {
+    setTripCountries((prev) => prev.filter((c) => c !== country));
+    H.tapLight();
+  }, []);
+
   const saveTrip = async () => {
     // Nom
     if (!tripName.trim()) {
@@ -560,17 +598,21 @@ export default function LogbookScreen() {
       return;
     }
 
-    // Pays : doit appartenir à GEOGRAPHY_DB (insensible à la casse)
-    const countryKey = Object.keys(GEOGRAPHY_DB).find(
-      (k) => k.toLowerCase() === tripCountry.trim().toLowerCase(),
-    );
-    if (!countryKey) {
+    // Au moins un pays sélectionné
+    if (tripCountries.length === 0) {
       Alert.alert(
-        "Pays invalide",
-        `&laquo;&nbsp;${tripCountry}&nbsp;&raquo; n'est pas dans la liste. Sélectionne un pays dans les suggestions.`,
+        "Pays manquant",
+        "Sélectionne au moins un pays pour ton voyage.",
       );
       return;
     }
+
+    // Déduit les océans depuis les pays sélectionnés
+    const oceansSet = new Set<string>();
+    tripCountries.forEach((c) => {
+      const list = GEOGRAPHY_DB[c];
+      if (list) list.forEach((o) => oceansSet.add(o));
+    });
 
     // Dates : format DD/MM/YYYY obligatoire
     const startDate = parseDmy(tripStart);
@@ -600,7 +642,9 @@ export default function LogbookScreen() {
     const t: Trip = {
       id: editingTripId || Date.now().toString(),
       name: tripName.trim(),
-      country: countryKey, // Casse normalisée
+      country: tripCountries[0], // Rétro-compat : premier pays
+      countries: tripCountries,
+      oceans: [...oceansSet],
       startDate: tripStart,
       endDate: tripEnd,
       coverPhoto: tripCover,
@@ -645,7 +689,9 @@ export default function LogbookScreen() {
           <View style={styles.tripOverlay} />
           <View style={styles.tripCoverContent}>
             <Text style={styles.tripCardName}>{item.name}</Text>
-            <Text style={styles.tripCardCountry}>📍 {item.country}</Text>
+            <Text style={styles.tripCardCountry}>
+              📍 {getTripCountries(item).join(" · ")}
+            </Text>
           </View>
         </View>
         <View style={styles.tripCardMeta}>
@@ -972,19 +1018,44 @@ export default function LogbookScreen() {
                   onChangeText={setTripName}
                 />
 
-                <Text style={styles.label}>Pays / Destination *</Text>
+                <Text style={styles.label}>Pays / Destinations *</Text>
+                {/* Chips des pays sélectionnés */}
+                {tripCountries.length > 0 && (
+                  <View style={styles.chipsRow}>
+                    {tripCountries.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[
+                          styles.chip,
+                          { backgroundColor: tripColor + "22" },
+                        ]}
+                        onPress={() => removeTripCountry(c)}
+                      >
+                        <Text style={[styles.chipText, { color: tripColor }]}>
+                          {c} ✕
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: Philippines (choisir dans la liste)"
-                  value={tripCountry}
+                  placeholder={
+                    tripCountries.length > 0
+                      ? "Ajouter un autre pays…"
+                      : "Ex: Philippines (choisir dans la liste)"
+                  }
+                  value={tripCountryInput}
                   onChangeText={(text) => {
-                    setTripCountry(text);
+                    setTripCountryInput(text);
                     if (text.length > 0) {
                       const all = Object.keys(GEOGRAPHY_DB);
                       setTripCountrySuggestions(
                         all
-                          .filter((c) =>
-                            c.toLowerCase().includes(text.toLowerCase()),
+                          .filter(
+                            (c) =>
+                              c.toLowerCase().includes(text.toLowerCase()) &&
+                              !tripCountries.includes(c),
                           )
                           .slice(0, 8),
                       );
@@ -999,20 +1070,19 @@ export default function LogbookScreen() {
                       <TouchableOpacity
                         key={idx}
                         style={styles.suggestionItem}
-                        onPress={() => {
-                          setTripCountry(c);
-                          setTripCountrySuggestions([]);
-                        }}
+                        onPress={() => addTripCountry(c)}
                       >
                         <Text>{c}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
-                {tripCountry.length > 0 &&
+                {tripCountryInput.length > 0 &&
                   tripCountrySuggestions.length === 0 &&
                   !Object.keys(GEOGRAPHY_DB).some(
-                    (k) => k.toLowerCase() === tripCountry.toLowerCase(),
+                    (k) =>
+                      k.toLowerCase() === tripCountryInput.toLowerCase() &&
+                      !tripCountries.includes(k),
                   ) && (
                     <Text style={styles.fieldHint}>
                       ⚠️ Pays non reconnu. Commence à taper pour voir les
@@ -1190,6 +1260,54 @@ export default function LogbookScreen() {
                 )}
 
                 <Text style={styles.label}>Pays / Lieu :</Text>
+                {/* Si voyage multi-pays sélectionné → choix rapide parmi les pays du voyage */}
+                {obsTripId &&
+                  (() => {
+                    const linkedTrip = trips.find((t) => t.id === obsTripId);
+                    const countries = linkedTrip
+                      ? getTripCountries(linkedTrip)
+                      : [];
+                    if (countries.length > 1) {
+                      return (
+                        <View style={styles.chipsRow}>
+                          {countries.map((c) => (
+                            <TouchableOpacity
+                              key={c}
+                              style={[
+                                styles.chip,
+                                {
+                                  backgroundColor:
+                                    locationInput === c
+                                      ? linkedTrip!.color
+                                      : linkedTrip!.color + "22",
+                                },
+                              ]}
+                              onPress={() => {
+                                setLocationInput(c);
+                                checkOcean(c);
+                                H.tapLight();
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  styles.chipText,
+                                  {
+                                    color:
+                                      locationInput === c
+                                        ? "white"
+                                        : linkedTrip!.color,
+                                  },
+                                ]}
+                              >
+                                {c}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      );
+                    }
+                    return null;
+                  })()}
                 <TextInput
                   style={styles.input}
                   placeholder="Ex: France..."
@@ -1826,6 +1944,23 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 10,
     fontStyle: "italic",
+  },
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   suggestionItem: {
     padding: 10,

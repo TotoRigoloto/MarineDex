@@ -7,6 +7,7 @@
 import ShareableTripCard from "@/components/shareable-trip-card";
 import {
   ENCYCLOPEDIA_DATA,
+  getTripCountries,
   Observation,
   Trip,
 } from "@/constants/MarineData";
@@ -209,7 +210,9 @@ export default function TripDetailScreen() {
               style={[styles.colorChip, { backgroundColor: trip.color }]}
             />
             <Text style={styles.coverTitle}>{trip.name}</Text>
-            <Text style={styles.coverCountry}>📍 {trip.country}</Text>
+            <Text style={styles.coverCountry}>
+              📍 {getTripCountries(trip).join(" · ")}
+            </Text>
             <Text style={styles.coverDates}>
               {trip.startDate} → {trip.endDate}
             </Text>
