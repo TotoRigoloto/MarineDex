@@ -107,7 +107,7 @@ export default function SettingsScreen() {
       await AsyncStorage.setItem(STORAGE_KEYS.LAST_SYNC_AT, now);
       Alert.alert(
         "Sync terminée ✓",
-        `Envoyés : ${r.pushedTrips} voyages, ${r.pushedObs} obs.\nReçus : ${r.pulledTrips} voyages, ${r.pulledObs} obs.`,
+        `Envoyés : ${r.pushedTrips} voyages, ${r.pushedDives} plongées, ${r.pushedObs} obs.\nReçus : ${r.pulledTrips} voyages, ${r.pulledDives} plongées, ${r.pulledObs} obs.`,
       );
     } else {
       Alert.alert("Erreur de sync", r.error ?? "Inconnue");

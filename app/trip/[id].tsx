@@ -1,17 +1,21 @@
 // Page détail d'un voyage v2 :
-// - Onglets : Vue d'ensemble · Timeline · Galerie
+// - Onglets : Vue d'ensemble · Plongées · Timeline · Galerie
 // - Vue d'ensemble : couverture, stats, mini-carte, liste observations
+// - Plongées : liste des plongées du voyage avec observations rattachées
 // - Timeline : observations groupées par jour (ordre chronologique)
 // - Galerie : grille des photos (utilisateur + encyclopédie)
 // - Export : génère un PNG partageable du voyage
 import ShareableTripCard from "@/components/shareable-trip-card";
 import {
+  Dive,
   ENCYCLOPEDIA_DATA,
   getTripCountries,
   Observation,
+  TIME_OF_DAY_LABELS,
   Trip,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import { loadDives } from "@/services/dives";
 import * as H from "@/services/haptics";
 import { captureAndShare } from "@/services/share-card";
 import { weatherEmoji } from "@/services/weather";
@@ -35,7 +39,7 @@ import MapView, { Marker } from "react-native-maps";
 
 const { width } = Dimensions.get("window");
 
-type Tab = "overview" | "timeline" | "gallery";
+type Tab = "overview" | "dives" | "timeline" | "gallery";
 
 // Parse "DD/MM/YYYY" → Date (ou null)
 function parseDate(dmy: string): Date | null {
@@ -49,6 +53,7 @@ export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [logs, setLogs] = useState<Observation[]>([]);
+  const [tripDives, setTripDives] = useState<Dive[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [username, setUsername] = useState<string | undefined>(undefined);
@@ -70,6 +75,9 @@ export default function TripDetailScreen() {
         setTrip(trips.find((t) => t.id === id) ?? null);
         setLogs(allLogs.filter((l) => l.tripId === id));
         setUsername(savedUsername[1] ?? undefined);
+        // Charger les plongées du voyage
+        const allDives = await loadDives();
+        setTripDives(allDives.filter((d) => d.tripId === id));
       };
       load();
     }, [id]),
@@ -266,6 +274,7 @@ export default function TripDetailScreen() {
         {/* TABS */}
         <View style={styles.tabBar}>
           <TabBtn label="Aperçu" active={tab === "overview"} onPress={() => setTab("overview")} />
+          <TabBtn label="Plongées" active={tab === "dives"} onPress={() => setTab("dives")} />
           <TabBtn label="Timeline" active={tab === "timeline"} onPress={() => setTab("timeline")} />
           <TabBtn label="Galerie" active={tab === "gallery"} onPress={() => setTab("gallery")} />
         </View>
@@ -343,6 +352,94 @@ export default function TripDetailScreen() {
               )}
             </View>
           </>
+        )}
+
+        {tab === "dives" && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              🤿 Plongées ({tripDives.length})
+            </Text>
+            {tripDives.length === 0 ? (
+              <Text style={{ color: "#888", fontStyle: "italic", marginLeft: 15 }}>
+                Aucune plongée enregistrée pour ce voyage.
+              </Text>
+            ) : (
+              tripDives
+                .sort((a, b) => {
+                  const da = parseDate(a.date)?.getTime() ?? 0;
+                  const db = parseDate(b.date)?.getTime() ?? 0;
+                  return da - db;
+                })
+                .map((dive) => {
+                  const diveObs = logs.filter((l) => l.diveId === dive.id);
+                  return (
+                    <View
+                      key={dive.id}
+                      style={{
+                        backgroundColor: "white",
+                        borderRadius: 12,
+                        padding: 14,
+                        marginHorizontal: 15,
+                        marginBottom: 10,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 3,
+                        elevation: 2,
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#006994" }}>
+                          {dive.date} — {TIME_OF_DAY_LABELS[dive.timeOfDay]}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#888" }}>
+                          📍 {dive.country}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+                        {dive.depthMax != null && (
+                          <Text style={{ fontSize: 12, color: "#555" }}>
+                            ↓ {dive.depthMax}m
+                          </Text>
+                        )}
+                        {dive.durationMin != null && (
+                          <Text style={{ fontSize: 12, color: "#555" }}>
+                            ⏱ {dive.durationMin}min
+                          </Text>
+                        )}
+                        {dive.visibilityM != null && (
+                          <Text style={{ fontSize: 12, color: "#555" }}>
+                            👁 {dive.visibilityM}m
+                          </Text>
+                        )}
+                        {dive.waterTempC != null && (
+                          <Text style={{ fontSize: 12, color: "#555" }}>
+                            🌡 {dive.waterTempC}°C
+                          </Text>
+                        )}
+                      </View>
+                      {dive.notes ? (
+                        <Text style={{ fontSize: 12, color: "#777", marginTop: 6, fontStyle: "italic" }}>
+                          {dive.notes}
+                        </Text>
+                      ) : null}
+                      {diveObs.length > 0 && (
+                        <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: "#eee", paddingTop: 8 }}>
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: "#333", marginBottom: 4 }}>
+                            {diveObs.length} observation{diveObs.length > 1 ? "s" : ""}
+                          </Text>
+                          {diveObs.map((obs) => (
+                            <Text key={obs.id} style={{ fontSize: 12, color: "#555" }}>
+                              • {obs.speciesName}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+            )}
+          </View>
         )}
 
         {tab === "timeline" && (

@@ -6,7 +6,7 @@
 // Hors-ligne : on continue d'écrire en local. Le prochain call à
 // syncAll() poussera les nouveautés.
 
-import { Observation, Trip } from "@/constants/MarineData";
+import { Dive, Observation, Trip } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
@@ -33,6 +33,7 @@ interface DbObservation {
   id: string;
   user_id: string;
   trip_id: string | null;
+  dive_id: string | null;
   species_name: string;
   date: string | null;
   location: string | null;
@@ -87,6 +88,7 @@ function localObsToDb(o: Observation, userId: string): Omit<DbObservation, "crea
     id: o.id,
     user_id: userId,
     trip_id: o.tripId ?? null,
+    dive_id: o.diveId ?? null,
     species_name: o.speciesName,
     date: o.date,
     location: o.location || null,
@@ -115,6 +117,68 @@ function dbObsToLocal(o: DbObservation): Observation {
     latitude: o.latitude ?? undefined,
     longitude: o.longitude ?? undefined,
     tripId: o.trip_id ?? undefined,
+    diveId: o.dive_id ?? undefined,
+  };
+}
+
+// ============== TYPES & MAPPERS DIVES ==============
+interface DbDive {
+  id: string;
+  user_id: string;
+  trip_id: string | null;
+  date: string | null;
+  time_of_day: string;
+  country: string | null;
+  ocean: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  depth_max: number | null;
+  duration_min: number | null;
+  visibility_m: number | null;
+  water_temp_c: number | null;
+  weather: any | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function localDiveToDb(d: Dive, userId: string): Omit<DbDive, "created_at" | "updated_at"> {
+  return {
+    id: d.id,
+    user_id: userId,
+    trip_id: d.tripId ?? null,
+    date: d.date || null,
+    time_of_day: d.timeOfDay,
+    country: d.country || null,
+    ocean: d.ocean || null,
+    latitude: d.latitude ?? null,
+    longitude: d.longitude ?? null,
+    depth_max: d.depthMax ?? null,
+    duration_min: d.durationMin ?? null,
+    visibility_m: d.visibilityM ?? null,
+    water_temp_c: d.waterTempC ?? null,
+    weather: d.weather ?? null,
+    notes: d.notes || null,
+  };
+}
+
+function dbDiveToLocal(d: DbDive): Dive {
+  return {
+    id: d.id,
+    tripId: d.trip_id ?? undefined,
+    date: d.date ?? "",
+    timeOfDay: (d.time_of_day as Dive["timeOfDay"]) || "morning",
+    country: d.country ?? "",
+    ocean: d.ocean ?? "",
+    latitude: d.latitude ?? undefined,
+    longitude: d.longitude ?? undefined,
+    depthMax: d.depth_max ?? undefined,
+    durationMin: d.duration_min ?? undefined,
+    visibilityM: d.visibility_m ?? undefined,
+    waterTempC: d.water_temp_c ?? undefined,
+    weather: d.weather ?? undefined,
+    notes: d.notes ?? undefined,
+    createdAt: new Date(d.created_at).getTime(),
   };
 }
 
@@ -187,6 +251,8 @@ export interface SyncResult {
   pulledTrips: number;
   pushedObs: number;
   pulledObs: number;
+  pushedDives: number;
+  pulledDives: number;
   error?: string;
 }
 
@@ -205,6 +271,8 @@ export async function syncAll(): Promise<SyncResult> {
       pulledTrips: 0,
       pushedObs: 0,
       pulledObs: 0,
+      pushedDives: 0,
+      pulledDives: 0,
       error: "Pas de session — sync ignorée",
     };
   }
@@ -212,16 +280,20 @@ export async function syncAll(): Promise<SyncResult> {
   let pushedTrips = 0,
     pulledTrips = 0,
     pushedObs = 0,
-    pulledObs = 0;
+    pulledObs = 0,
+    pushedDives = 0,
+    pulledDives = 0;
 
   try {
     // ====== LECTURES LOCALES ======
-    const [lt, lo] = await AsyncStorage.multiGet([
+    const [lt, lo, ld] = await AsyncStorage.multiGet([
       STORAGE_KEYS.TRIPS,
       STORAGE_KEYS.LOGS,
+      STORAGE_KEYS.DIVES,
     ]);
     const localTrips: Trip[] = lt[1] ? JSON.parse(lt[1]) : [];
     const localObs: Observation[] = lo[1] ? JSON.parse(lo[1]) : [];
+    const localDives: Dive[] = ld[1] ? JSON.parse(ld[1]) : [];
 
     // ====== PUSH TRIPS ======
     for (const t of localTrips) {
@@ -254,6 +326,16 @@ export async function syncAll(): Promise<SyncResult> {
       else console.warn("[sync] obs push error:", error.message);
     }
 
+    // ====== PUSH DIVES ======
+    for (const d of localDives) {
+      const payload = localDiveToDb(d, user.id);
+      const { error } = await supabase
+        .from("md_dives")
+        .upsert(payload, { onConflict: "id" });
+      if (!error) pushedDives++;
+      else console.warn("[sync] dive push error:", error.message);
+    }
+
     // ====== PULL : récupère tout depuis le cloud ======
     const { data: cloudTrips } = await supabase
       .from("md_trips")
@@ -261,6 +343,10 @@ export async function syncAll(): Promise<SyncResult> {
       .order("created_at", { ascending: false });
     const { data: cloudObs } = await supabase
       .from("md_observations")
+      .select("*")
+      .order("created_at", { ascending: false });
+    const { data: cloudDives } = await supabase
+      .from("md_dives")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -290,6 +376,20 @@ export async function syncAll(): Promise<SyncResult> {
       }
     });
 
+    const mergedDivesMap = new Map<string, Dive>();
+    localDives.forEach((d) => mergedDivesMap.set(d.id, d));
+    ((cloudDives as DbDive[] | null) ?? []).forEach((d) => {
+      const local = mergedDivesMap.get(d.id);
+      const cloud = dbDiveToLocal(d);
+      if (
+        !local ||
+        new Date(d.updated_at).getTime() > (local.createdAt ?? 0)
+      ) {
+        mergedDivesMap.set(d.id, cloud);
+        if (!local) pulledDives++;
+      }
+    });
+
     // Persiste le merge
     await AsyncStorage.multiSet([
       [
@@ -301,9 +401,17 @@ export async function syncAll(): Promise<SyncResult> {
         ),
       ],
       [STORAGE_KEYS.LOGS, JSON.stringify([...mergedObsMap.values()])],
+      [
+        STORAGE_KEYS.DIVES,
+        JSON.stringify(
+          [...mergedDivesMap.values()].sort(
+            (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+          ),
+        ),
+      ],
     ]);
 
-    return { ok: true, pushedTrips, pulledTrips, pushedObs, pulledObs };
+    return { ok: true, pushedTrips, pulledTrips, pushedObs, pulledObs, pushedDives, pulledDives };
   } catch (e: any) {
     return {
       ok: false,
@@ -311,6 +419,8 @@ export async function syncAll(): Promise<SyncResult> {
       pulledTrips,
       pushedObs,
       pulledObs,
+      pushedDives,
+      pulledDives,
       error: e?.message ?? "erreur inconnue",
     };
   }
@@ -331,5 +441,14 @@ export async function deleteObsCloud(obsId: string) {
     await supabase.from("md_observations").delete().eq("id", obsId);
   } catch (e) {
     console.warn("[sync] delete obs:", e);
+  }
+}
+
+/** Suppression côté cloud quand l'utilisateur supprime une plongée */
+export async function deleteDiveCloud(diveId: string) {
+  try {
+    await supabase.from("md_dives").delete().eq("id", diveId);
+  } catch (e) {
+    console.warn("[sync] delete dive:", e);
   }
 }

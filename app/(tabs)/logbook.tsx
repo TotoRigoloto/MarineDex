@@ -7,20 +7,25 @@
 
 import {
   Animal,
+  Dive,
   ENCYCLOPEDIA_DATA,
   GEOGRAPHY_DB,
   getTripCountries,
   getTripOceans,
   initialAnimals,
   Observation,
+  TIME_OF_DAY_LABELS,
+  TimeOfDay,
   Trip,
   TRIP_COLORS,
+  COUNTRY_COORDINATES,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import EmptyState from "@/components/empty-state";
 import { SkeletonList } from "@/components/skeleton";
+import { loadDives, saveDive, deleteDive as deleteDiveLocal } from "@/services/dives";
 import * as H from "@/services/haptics";
-import { deleteObsCloud } from "@/services/sync";
+import { deleteObsCloud, deleteDiveCloud } from "@/services/sync";
 import { fetchWeather, toIsoDate } from "@/services/weather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -71,6 +76,7 @@ export default function LogbookScreen() {
     undefined,
   );
   const [obsTripId, setObsTripId] = useState<string | undefined>(undefined);
+  const [obsDiveId, setObsDiveId] = useState<string | undefined>(undefined);
   const [exactCoords, setExactCoords] = useState<{
     latitude: number;
     longitude: number;
@@ -97,6 +103,28 @@ export default function LogbookScreen() {
     Observation["weather"] | undefined
   >(undefined);
   const [fetchingWeather, setFetchingWeather] = useState(false);
+
+  // État global des plongées
+  const [dives, setDives] = useState<Dive[]>([]);
+
+  // États formulaire plongée
+  const [diveFormVisible, setDiveFormVisible] = useState(false);
+  const [editingDiveId, setEditingDiveId] = useState<string | null>(null);
+  const [diveDateInput, setDiveDateInput] = useState("");
+  const [diveTimeOfDay, setDiveTimeOfDay] = useState<TimeOfDay>("morning");
+  const [diveCountryInput, setDiveCountryInput] = useState("");
+  const [diveCountrySuggestions, setDiveCountrySuggestions] = useState<string[]>([]);
+  const [diveOceanInput, setDiveOceanInput] = useState("");
+  const [diveOceanOptions, setDiveOceanOptions] = useState<string[]>([]);
+  const [diveDepthInput, setDiveDepthInput] = useState("");
+  const [diveDurationInput, setDiveDurationInput] = useState("");
+  const [diveVisibilityInput, setDiveVisibilityInput] = useState("");
+  const [diveWaterTempInput, setDiveWaterTempInput] = useState("");
+  const [diveNotesInput, setDiveNotesInput] = useState("");
+  const [diveTripId, setDiveTripId] = useState<string | undefined>(undefined);
+  const [diveCoords, setDiveCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [diveWeatherSnapshot, setDiveWeatherSnapshot] = useState<Dive["weather"] | undefined>(undefined);
+  const [diveFetchingWeather, setDiveFetchingWeather] = useState(false);
 
   // États formulaire voyage
   const [tripFormVisible, setTripFormVisible] = useState(false);
@@ -137,6 +165,7 @@ export default function LogbookScreen() {
       setFilteredLocations([]);
       setExactCoords(null);
       setObsTripId(tripId);
+      setObsDiveId(undefined);
       resetDiveFields();
       // Si on crée depuis un voyage mono-pays, pré-remplir le pays
       if (tripId) {
@@ -190,6 +219,9 @@ export default function LogbookScreen() {
         return t;
       });
       setTrips(migratedTrips);
+      // Charger les plongées
+      const allDives = await loadDives();
+      setDives(allDives);
     } catch (e) {
       console.error(e);
     } finally {
@@ -441,6 +473,7 @@ export default function LogbookScreen() {
       latitude: exactCoords?.latitude,
       longitude: exactCoords?.longitude,
       tripId: obsTripId,
+      diveId: obsDiveId,
       depthM: toNum(depthInput),
       durationMin: toNum(durationInput),
       visibilityM: toNum(visibilityInput),
@@ -569,6 +602,193 @@ export default function LogbookScreen() {
     )
       return null;
     return d;
+  };
+
+  // ====== Formulaire plongée ======
+  const checkDiveOcean = (countryName: string) => {
+    const key = Object.keys(GEOGRAPHY_DB).find(
+      (k) => k.toLowerCase() === countryName.trim().toLowerCase(),
+    );
+    if (key) {
+      const oceans = GEOGRAPHY_DB[key];
+      setDiveOceanOptions(oceans);
+      if (oceans.length === 1) setDiveOceanInput(oceans[0]);
+    } else {
+      setDiveOceanOptions([]);
+    }
+  };
+
+  const openNewDiveModal = useCallback(
+    (tripId?: string) => {
+      setEditingDiveId(null);
+      setDiveDateInput(new Date().toLocaleDateString());
+      setDiveTimeOfDay("morning");
+      setDiveCountryInput("");
+      setDiveCountrySuggestions([]);
+      setDiveOceanInput("");
+      setDiveOceanOptions([]);
+      setDiveDepthInput("");
+      setDiveDurationInput("");
+      setDiveVisibilityInput("");
+      setDiveWaterTempInput("");
+      setDiveNotesInput("");
+      setDiveTripId(tripId);
+      setDiveCoords(null);
+      setDiveWeatherSnapshot(undefined);
+      // Si voyage mono-pays, pré-remplir
+      if (tripId) {
+        const t = trips.find((tt) => tt.id === tripId);
+        if (t) {
+          const countries = getTripCountries(t);
+          if (countries.length === 1) {
+            setDiveCountryInput(countries[0]);
+            checkDiveOcean(countries[0]);
+          }
+        }
+      }
+      setDiveFormVisible(true);
+    },
+    [trips],
+  );
+
+  const openEditDiveModal = useCallback(
+    (dive: Dive) => {
+      setEditingDiveId(dive.id);
+      setDiveDateInput(dive.date);
+      setDiveTimeOfDay(dive.timeOfDay);
+      setDiveCountryInput(dive.country);
+      checkDiveOcean(dive.country);
+      setDiveOceanInput(dive.ocean);
+      setDiveDepthInput(dive.depthMax?.toString() ?? "");
+      setDiveDurationInput(dive.durationMin?.toString() ?? "");
+      setDiveVisibilityInput(dive.visibilityM?.toString() ?? "");
+      setDiveWaterTempInput(dive.waterTempC?.toString() ?? "");
+      setDiveNotesInput(dive.notes ?? "");
+      setDiveTripId(dive.tripId);
+      setDiveCoords(
+        dive.latitude && dive.longitude
+          ? { latitude: dive.latitude, longitude: dive.longitude }
+          : null,
+      );
+      setDiveWeatherSnapshot(dive.weather);
+      setDiveFormVisible(true);
+    },
+    [],
+  );
+
+  const handleSaveDive = async () => {
+    if (!diveCountryInput.trim()) {
+      Alert.alert("Erreur", "Indique le pays de ta plongée.");
+      return;
+    }
+    const countryKey = Object.keys(GEOGRAPHY_DB).find(
+      (k) => k.toLowerCase() === diveCountryInput.trim().toLowerCase(),
+    );
+    if (!countryKey) {
+      Alert.alert("Pays invalide", "Sélectionne un pays dans les suggestions.");
+      return;
+    }
+
+    const toNum = (s: string) => {
+      const n = parseFloat(s.replace(",", "."));
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    const dive: Dive = {
+      id: editingDiveId || Date.now().toString(),
+      tripId: diveTripId,
+      date: diveDateInput || new Date().toLocaleDateString(),
+      timeOfDay: diveTimeOfDay,
+      country: countryKey,
+      ocean: diveOceanInput || "Non précisé",
+      latitude: diveCoords?.latitude,
+      longitude: diveCoords?.longitude,
+      depthMax: toNum(diveDepthInput),
+      durationMin: toNum(diveDurationInput),
+      visibilityM: toNum(diveVisibilityInput),
+      waterTempC: toNum(diveWaterTempInput),
+      weather: diveWeatherSnapshot,
+      notes: diveNotesInput || undefined,
+      createdAt: editingDiveId
+        ? (dives.find((d) => d.id === editingDiveId)?.createdAt ?? Date.now())
+        : Date.now(),
+    };
+
+    try {
+      const updated = await saveDive(dive);
+      setDives(updated);
+      setDiveFormVisible(false);
+      H.success();
+    } catch (e) {
+      console.error(e);
+      H.error();
+    }
+  };
+
+  const handleDeleteDive = async () => {
+    if (!editingDiveId) return;
+    Alert.alert(
+      "Supprimer cette plongée ?",
+      "Les observations rattachées seront détachées.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const updated = await deleteDiveLocal(editingDiveId);
+              setDives(updated);
+              // Détacher les observations
+              const detached = logs.map((l) =>
+                l.diveId === editingDiveId ? { ...l, diveId: undefined } : l,
+              );
+              setLogs(detached);
+              await AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(detached));
+              deleteDiveCloud(editingDiveId);
+              setDiveFormVisible(false);
+              H.tapHeavy();
+            } catch (e) {
+              console.error(e);
+              H.error();
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // Fetch météo pour la plongée
+  const fetchDiveWeather = async () => {
+    if (!diveCoords && !diveCountryInput) return;
+    setDiveFetchingWeather(true);
+    try {
+      const isoDate = toIsoDate(diveDateInput);
+      let lat = diveCoords?.latitude;
+      let lon = diveCoords?.longitude;
+      // Fallback sur les coordonnées du pays si pas de GPS
+      if (!lat || !lon) {
+        const countryKey = Object.keys(COUNTRY_COORDINATES).find(
+          (k) => k.toLowerCase() === diveCountryInput.trim().toLowerCase(),
+        );
+        if (countryKey) {
+          const oceans = COUNTRY_COORDINATES[countryKey];
+          const firstOcean = Object.values(oceans)[0];
+          if (firstOcean) {
+            lat = firstOcean.latitude;
+            lon = firstOcean.longitude;
+          }
+        }
+      }
+      if (lat && lon && isoDate) {
+        const w = await fetchWeather(lat, lon, isoDate);
+        setDiveWeatherSnapshot(w ?? undefined);
+      }
+    } catch (e) {
+      console.warn("[dive] weather fetch error:", e);
+    } finally {
+      setDiveFetchingWeather(false);
+    }
   };
 
   // Ajouter un pays à la sélection multi-pays
@@ -797,9 +1017,21 @@ export default function LogbookScreen() {
         <Text style={styles.headerTitle}>📔 Journal</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() =>
-            mode === "trips" ? openNewTripModal() : openNewLogModal()
-          }
+          onPress={() => {
+            if (mode === "observations") {
+              openNewLogModal();
+            } else {
+              // En mode voyages, proposer voyage ou plongée
+              Alert.alert("Créer…", undefined, [
+                { text: "Nouveau voyage", onPress: openNewTripModal },
+                {
+                  text: "Nouvelle plongée",
+                  onPress: () => openNewDiveModal(),
+                },
+                { text: "Annuler", style: "cancel" },
+              ]);
+            }
+          }}
         >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
@@ -974,6 +1206,335 @@ export default function LogbookScreen() {
           )}
         </>
       )}
+
+      {/* ============ MODAL FORMULAIRE PLONGÉE ============ */}
+      <Modal visible={diveFormVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <Text style={styles.modalTitle}>
+                  {editingDiveId ? "Modifier la plongée" : "Nouvelle plongée"}
+                </Text>
+
+                {/* Date */}
+                <Text style={styles.label}>Date (JJ/MM/AAAA)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="12/03/2025"
+                  value={diveDateInput}
+                  onChangeText={(t) => setDiveDateInput(autoFormatDate(t))}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                />
+
+                {/* Moment de la journée */}
+                <Text style={styles.label}>Moment de la journée</Text>
+                <View style={styles.chipsRow}>
+                  {(Object.entries(TIME_OF_DAY_LABELS) as [TimeOfDay, string][]).map(
+                    ([key, label]) => (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor:
+                              diveTimeOfDay === key ? "#006994" : "#006994" + "22",
+                          },
+                        ]}
+                        onPress={() => {
+                          setDiveTimeOfDay(key);
+                          H.tapLight();
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            {
+                              color: diveTimeOfDay === key ? "white" : "#006994",
+                            },
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    ),
+                  )}
+                </View>
+
+                {/* Pays */}
+                <Text style={styles.label}>Pays *</Text>
+                {/* Si rattachée à un voyage multi-pays → chips rapides */}
+                {diveTripId &&
+                  (() => {
+                    const linkedTrip = trips.find((t) => t.id === diveTripId);
+                    const countries = linkedTrip
+                      ? getTripCountries(linkedTrip)
+                      : [];
+                    if (countries.length > 1) {
+                      return (
+                        <View style={styles.chipsRow}>
+                          {countries.map((c) => (
+                            <TouchableOpacity
+                              key={c}
+                              style={[
+                                styles.chip,
+                                {
+                                  backgroundColor:
+                                    diveCountryInput === c
+                                      ? "#006994"
+                                      : "#006994" + "22",
+                                },
+                              ]}
+                              onPress={() => {
+                                setDiveCountryInput(c);
+                                checkDiveOcean(c);
+                                H.tapLight();
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  styles.chipText,
+                                  {
+                                    color:
+                                      diveCountryInput === c ? "white" : "#006994",
+                                  },
+                                ]}
+                              >
+                                {c}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      );
+                    }
+                    return null;
+                  })()}
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: Égypte..."
+                  value={diveCountryInput}
+                  onChangeText={(text) => {
+                    setDiveCountryInput(text);
+                    if (text.length > 0) {
+                      setDiveCountrySuggestions(
+                        Object.keys(GEOGRAPHY_DB)
+                          .filter((c) =>
+                            c.toLowerCase().includes(text.toLowerCase()),
+                          )
+                          .slice(0, 8),
+                      );
+                    } else {
+                      setDiveCountrySuggestions([]);
+                    }
+                  }}
+                  onBlur={() => checkDiveOcean(diveCountryInput)}
+                />
+                {diveCountrySuggestions.length > 0 && (
+                  <View style={styles.suggestionsBox}>
+                    {diveCountrySuggestions.map((c, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setDiveCountryInput(c);
+                          setDiveCountrySuggestions([]);
+                          checkDiveOcean(c);
+                        }}
+                      >
+                        <Text>{c}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Océan */}
+                {diveOceanOptions.length > 1 && (
+                  <>
+                    <Text style={styles.label}>Océan / Mer</Text>
+                    <View style={styles.chipsRow}>
+                      {diveOceanOptions.map((o) => (
+                        <TouchableOpacity
+                          key={o}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor:
+                                diveOceanInput === o ? "#006994" : "#006994" + "22",
+                            },
+                          ]}
+                          onPress={() => {
+                            setDiveOceanInput(o);
+                            H.tapLight();
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              {
+                                color: diveOceanInput === o ? "white" : "#006994",
+                              },
+                            ]}
+                          >
+                            {o}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {/* Conditions */}
+                <Text style={styles.label}>Conditions (optionnel)</Text>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Prof. max (m)"
+                      value={diveDepthInput}
+                      onChangeText={setDiveDepthInput}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Durée (min)"
+                      value={diveDurationInput}
+                      onChangeText={setDiveDurationInput}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Visibilité (m)"
+                      value={diveVisibilityInput}
+                      onChangeText={setDiveVisibilityInput}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="T° eau (°C)"
+                      value={diveWaterTempInput}
+                      onChangeText={setDiveWaterTempInput}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+
+                {/* Météo auto */}
+                <TouchableOpacity
+                  style={[styles.locationBtn, { marginBottom: 12, alignSelf: "flex-start" }]}
+                  onPress={fetchDiveWeather}
+                  disabled={diveFetchingWeather}
+                >
+                  <Text style={styles.locationBtnText}>
+                    {diveFetchingWeather ? "Chargement…" : "🌤️ Récupérer la météo"}
+                  </Text>
+                </TouchableOpacity>
+                {diveWeatherSnapshot && (
+                  <Text style={styles.gpsOk}>
+                    ✅ Météo : {diveWeatherSnapshot.airTempC ?? "?"}°C,
+                    vent {diveWeatherSnapshot.windKmh ?? "?"}km/h
+                  </Text>
+                )}
+
+                {/* Rattacher à un voyage */}
+                <Text style={styles.label}>Rattacher à un voyage :</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginBottom: 12 }}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.tripChip,
+                      !diveTripId && styles.tripChipActive,
+                    ]}
+                    onPress={() => setDiveTripId(undefined)}
+                  >
+                    <Text
+                      style={[
+                        styles.tripChipTxt,
+                        !diveTripId && { color: "white" },
+                      ]}
+                    >
+                      Aucun
+                    </Text>
+                  </TouchableOpacity>
+                  {trips.map((t) => (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={[
+                        styles.tripChip,
+                        diveTripId === t.id && {
+                          backgroundColor: t.color,
+                          borderColor: t.color,
+                        },
+                      ]}
+                      onPress={() => setDiveTripId(t.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.tripChipTxt,
+                          diveTripId === t.id && { color: "white" },
+                        ]}
+                      >
+                        🧳 {t.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Notes */}
+                <Text style={styles.label}>Notes</Text>
+                <TextInput
+                  style={[styles.input, { height: 60 }]}
+                  multiline
+                  placeholder="Récif nord, courant modéré…"
+                  value={diveNotesInput}
+                  onChangeText={setDiveNotesInput}
+                />
+
+                {/* Boutons */}
+                <View style={styles.btnRow}>
+                  {editingDiveId && (
+                    <TouchableOpacity
+                      style={styles.btnDelete}
+                      onPress={handleDeleteDive}
+                    >
+                      <Text style={styles.btnText}>🗑️</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={styles.btnCancel}
+                    onPress={() => setDiveFormVisible(false)}
+                  >
+                    <Text style={styles.btnText}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.btnSave}
+                    onPress={handleSaveDive}
+                  >
+                    <Text style={styles.btnText}>
+                      {editingDiveId ? "Mettre à jour" : "Créer"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ height: 20 }} />
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* ============ MODAL FORMULAIRE VOYAGE ============ */}
       <Modal visible={tripFormVisible} animationType="slide" transparent>
@@ -1376,6 +1937,75 @@ export default function LogbookScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+
+                {/* Rattacher à une plongée */}
+                {(() => {
+                  // Plongées disponibles : du voyage sélectionné ou récentes (48h)
+                  const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+                  const availableDives = dives.filter((d) => {
+                    if (obsTripId && d.tripId === obsTripId) return true;
+                    if (d.createdAt >= cutoff) return true;
+                    return false;
+                  });
+                  if (availableDives.length === 0) return null;
+                  return (
+                    <>
+                      <Text style={styles.label}>Rattacher à une plongée :</Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginBottom: 12 }}
+                      >
+                        <TouchableOpacity
+                          style={[
+                            styles.tripChip,
+                            !obsDiveId && styles.tripChipActive,
+                          ]}
+                          onPress={() => setObsDiveId(undefined)}
+                        >
+                          <Text
+                            style={[
+                              styles.tripChipTxt,
+                              !obsDiveId && { color: "white" },
+                            ]}
+                          >
+                            Aucune
+                          </Text>
+                        </TouchableOpacity>
+                        {availableDives.map((d) => (
+                          <TouchableOpacity
+                            key={d.id}
+                            style={[
+                              styles.tripChip,
+                              obsDiveId === d.id && {
+                                backgroundColor: "#006994",
+                                borderColor: "#006994",
+                              },
+                            ]}
+                            onPress={() => {
+                              setObsDiveId(d.id);
+                              // Pré-remplir les champs depuis la plongée
+                              setLocationInput(d.country);
+                              setOceanInput(d.ocean);
+                              setDateInput(d.date);
+                              if (d.tripId) setObsTripId(d.tripId);
+                              H.tapLight();
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.tripChipTxt,
+                                obsDiveId === d.id && { color: "white" },
+                              ]}
+                            >
+                              🤿 {d.date} {TIME_OF_DAY_LABELS[d.timeOfDay]?.split(" ")[0]} {d.country}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </>
+                  );
+                })()}
 
                 <Text style={styles.label}>
                   Localisation précise (Optionnel) :

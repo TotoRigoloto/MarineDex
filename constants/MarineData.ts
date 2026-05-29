@@ -1488,7 +1488,8 @@ export interface Observation {
   latitude?: number;
   longitude?: number;
   tripId?: string; // Rattachement à un voyage
-  // === Détails plongée (optionnels) ===
+  diveId?: string; // Rattachement à une plongée
+  // === Détails plongée (optionnels, gardés en fallback pour obs sans dive) ===
   depthM?: number; // profondeur en mètres
   durationMin?: number; // durée de la plongée en minutes
   visibilityM?: number; // visibilité en mètres
@@ -1500,6 +1501,41 @@ export interface Observation {
     waveHeightM?: number;
     weatherCode?: number; // code WMO
   };
+}
+
+// --- PLONGÉES ---
+// Session dans l'eau qui regroupe les paramètres communs à plusieurs observations.
+// Hiérarchie : Voyage → Plongée → Observation
+export type TimeOfDay = 'morning' | 'afternoon' | 'sunset' | 'night';
+
+export const TIME_OF_DAY_LABELS: Record<TimeOfDay, string> = {
+  morning: '🌅 Matin',
+  afternoon: '☀️ Après-midi',
+  sunset: '🌇 Coucher de soleil',
+  night: '🌙 Nuit',
+};
+
+export interface Dive {
+  id: string;
+  tripId?: string; // Optionnel — une plongée peut être hors voyage
+  date: string; // DD/MM/YYYY
+  timeOfDay: TimeOfDay;
+  country: string;
+  ocean: string;
+  latitude?: number;
+  longitude?: number;
+  depthMax?: number; // mètres
+  durationMin?: number; // minutes
+  visibilityM?: number;
+  waterTempC?: number;
+  weather?: {
+    airTempC?: number;
+    windKmh?: number;
+    waveHeightM?: number;
+    weatherCode?: number;
+  };
+  notes?: string;
+  createdAt: number;
 }
 
 // --- VOYAGES (Storyboards) ---

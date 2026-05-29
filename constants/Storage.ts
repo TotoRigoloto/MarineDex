@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   POKEDEX: "pokedex_save",
   LOGS: "user_logs",
   TRIPS: "user_trips",
+  DIVES: "user_dives",
 
   // Profil
   BUDDY: "user_buddy",
