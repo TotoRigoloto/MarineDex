@@ -1,10 +1,9 @@
-// Pokédex v2 :
-// - Barre de recherche par nom
-// - Tri : A-Z, rareté, famille, découvertes récentes
-// - Filtres : statut (tout / trouvés / manquants), famille, océan
-// - Fiche enrichie : rareté en étoiles, badge famille/groupe,
-//   section "Mes observations" qui montre où l'utilisateur a vu cette espèce
-//   avec lien direct vers le journal
+// Pokédex v3 :
+// - Recherche + tri compact (icônes) toujours visibles
+// - FAB "Filtres" avec badge compteur → bottom sheet animé
+// - Bottom sheet : statut, famille, océan (chips)
+// - Cards visuelles : image grande, silhouette pour non-découverts
+// - Compteur filtré "X / Y espèces"
 import {
   Animal,
   initialAnimals,
@@ -12,10 +11,14 @@ import {
   OCEAN_NAMES,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import * as H from "@/services/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import { Image as ExpoImage } from "expo-image";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -31,16 +34,26 @@ import {
 type Sort = "az" | "rarity" | "family" | "discovered";
 type Status = "ALL" | "SEEN" | "MISSING";
 
-const SORTS: { id: Sort; label: string; icon: string }[] = [
-  { id: "az", label: "A-Z", icon: "🔤" },
-  { id: "rarity", label: "Rareté", icon: "✨" },
-  { id: "family", label: "Famille", icon: "🐠" },
-  { id: "discovered", label: "Trouvés d'abord", icon: "✅" },
+const SORTS: { id: Sort; icon: string; label: string }[] = [
+  { id: "az", icon: "🔤", label: "A-Z" },
+  { id: "rarity", icon: "✨", label: "Rareté" },
+  { id: "family", icon: "🐠", label: "Famille" },
+  { id: "discovered", icon: "✅", label: "Trouvés d'abord" },
 ];
 
+const STATUS_OPTIONS: { id: Status; label: string }[] = [
+  { id: "ALL", label: "Tout" },
+  { id: "SEEN", label: "✓ Trouvés" },
+  { id: "MISSING", label: "🔒 À voir" },
+];
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 const rarityStars = (r: number) => "⭐".repeat(r) + "☆".repeat(3 - r);
 
 export default function PokedexScreen() {
+  // === Deep-link : filtre famille depuis la carte ===
+  const params = useLocalSearchParams<{ family?: string }>();
+
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
@@ -52,6 +65,10 @@ export default function PokedexScreen() {
   const [oceanFilter, setOceanFilter] = useState<string>("TOUS");
   const [familyFilter, setFamilyFilter] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>("az");
+
+  // Bottom sheet
+  const [showFilters, setShowFilters] = useState(false);
+  const sheetAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   const oceanList = ["TOUS", ...Object.values(OCEAN_NAMES)];
 
@@ -68,7 +85,6 @@ export default function PokedexScreen() {
         STORAGE_KEYS.LOGS,
       ]);
 
-      // Pokedex : merge initial + saved
       if (savedPokedex[1]) {
         const loaded: Animal[] = JSON.parse(savedPokedex[1]);
         setAnimals(
@@ -90,11 +106,55 @@ export default function PokedexScreen() {
     }
   };
 
+  // === Bottom sheet animations ===
+  const openFilterSheet = useCallback(() => {
+    setShowFilters(true);
+    H.tapLight();
+    Animated.spring(sheetAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 20,
+      stiffness: 150,
+    }).start();
+  }, [sheetAnim]);
+
+  // Pré-application du filtre famille depuis la carte
+  useEffect(() => {
+    if (params.family) {
+      setFamilyFilter(params.family);
+      openFilterSheet();
+    }
+  }, [params.family, openFilterSheet]);
+
+  const closeFilterSheet = useCallback(() => {
+    Animated.timing(sheetAnim, {
+      toValue: SCREEN_HEIGHT,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setShowFilters(false));
+  }, [sheetAnim]);
+
+  const resetFilters = useCallback(() => {
+    setStatusFilter("ALL");
+    setFamilyFilter(null);
+    setOceanFilter("TOUS");
+    H.tapMedium();
+  }, []);
+
   // Liste des familles présentes dans la BDD
   const availableFamilies = useMemo(
     () => [...new Set(animals.map((a) => a.family))].sort(),
     [animals],
   );
+
+  // Nombre de filtres actifs (hors recherche et tri)
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== "ALL") count++;
+    if (familyFilter) count++;
+    if (oceanFilter !== "TOUS") count++;
+    return count;
+  }, [statusFilter, familyFilter, oceanFilter]);
 
   // Pipeline filtre + tri
   const visibleAnimals = useMemo(() => {
@@ -152,40 +212,47 @@ export default function PokedexScreen() {
     setSelectedAnimal(null);
   };
 
-  const renderItem = ({ item }: { item: Animal }) => (
-    <TouchableOpacity
-      style={[styles.card, !item.discovered && styles.cardLocked]}
-      onPress={() => setSelectedAnimal(item)}
-      activeOpacity={0.85}
-    >
-      <View style={styles.imageContainer}>
-        <Image
-          source={item.image}
-          style={[styles.image, !item.discovered && styles.imageLocked]}
-        />
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: item.discovered ? "#28a745" : "#ccc" },
-          ]}
-        >
-          <Text style={styles.badgeText}>{item.discovered ? "✓" : "?"}</Text>
+  // === RENDER ITEM (card pokédex) ===
+  const renderItem = useCallback(
+    ({ item }: { item: Animal }) => (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => {
+          H.tapLight();
+          setSelectedAnimal(item);
+        }}
+        activeOpacity={0.85}
+      >
+        <View style={styles.imageContainer}>
+          {/* Silhouette sombre pour les non-découverts, image normale sinon */}
+          <ExpoImage
+            source={item.image}
+            style={[styles.image, !item.discovered && styles.imageLocked]}
+            contentFit="contain"
+          />
+          <View
+            style={[
+              styles.statusDot,
+              { backgroundColor: item.discovered ? "#43A047" : "#bbb" },
+            ]}
+          >
+            <Text style={styles.statusDotTxt}>
+              {item.discovered ? "✓" : "?"}
+            </Text>
+          </View>
         </View>
-      </View>
-      <Text style={styles.name} numberOfLines={1}>
-        {item.discovered ? item.name : "???"}
-      </Text>
-      <Text style={styles.rarityTxt}>{rarityStars(item.rarity)}</Text>
-      <View style={styles.familyTag}>
-        <Text style={styles.familyTagTxt} numberOfLines={1}>
-          {item.family}
+        <Text style={styles.cardName} numberOfLines={1}>
+          {item.discovered ? item.name : "???"}
         </Text>
-      </View>
-    </TouchableOpacity>
+        <Text style={styles.cardRarity}>{rarityStars(item.rarity)}</Text>
+      </TouchableOpacity>
+    ),
+    [],
   );
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* === HEADER === */}
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>📖 Pokédex</Text>
         <View style={styles.progressBox}>
@@ -200,7 +267,7 @@ export default function PokedexScreen() {
         </View>
       </View>
 
-      {/* Recherche */}
+      {/* === RECHERCHE === */}
       <View style={styles.searchWrap}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
@@ -217,141 +284,219 @@ export default function PokedexScreen() {
         )}
       </View>
 
-      {/* Statut + Tri */}
-      <View style={styles.row}>
-        {(["ALL", "SEEN", "MISSING"] as Status[]).map((s) => (
-          <TouchableOpacity
-            key={s}
-            style={[
-              styles.statusBtn,
-              statusFilter === s && styles.statusBtnActive,
-            ]}
-            onPress={() => setStatusFilter(s)}
-          >
-            <Text
-              style={[
-                styles.statusBtnTxt,
-                statusFilter === s && styles.statusBtnTxtActive,
-              ]}
-            >
-              {s === "ALL" ? "Tout" : s === "SEEN" ? "✓ Trouvés" : "🔒 À voir"}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Tri */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ maxHeight: 40, marginBottom: 6 }}
-        contentContainerStyle={{
-          paddingHorizontal: 12,
-          gap: 6,
-          alignItems: "center",
-        }}
-      >
-        <Text style={styles.sortLabel}>Trier :</Text>
+      {/* === TRI COMPACT (icônes seules) === */}
+      <View style={styles.sortRow}>
         {SORTS.map((s) => (
           <TouchableOpacity
             key={s.id}
             style={[styles.sortChip, sort === s.id && styles.sortChipActive]}
-            onPress={() => setSort(s.id)}
+            onPress={() => {
+              setSort(s.id);
+              H.selection();
+            }}
           >
-            <Text
-              style={[
-                styles.sortChipTxt,
-                sort === s.id && styles.sortChipTxtActive,
-              ]}
-            >
-              {s.icon} {s.label}
-            </Text>
+            <Text style={styles.sortChipIcon}>{s.icon}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
-
-      {/* Familles (Scroll horizontal fluide et stable) */}
-      <ScrollView
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        directionalLockEnabled={true}
-        alwaysBounceVertical={false}
-        style={styles.familyChipsScroll} // On réutilise le style du container parent
-        contentContainerStyle={styles.familyChips} // On applique le style de la rangée interne
-      >
-        <TouchableOpacity
-          style={[styles.famChip, !familyFilter && styles.famChipActive]}
-          onPress={() => setFamilyFilter(null)}
-        >
-          <Text
-            style={[
-              styles.famChipTxt,
-              !familyFilter && styles.famChipTxtActive,
-            ]}
-          >
-            Toutes
+        {/* Compteur filtré */}
+        <View style={styles.countBox}>
+          <Text style={styles.countTxt}>
+            {visibleAnimals.length} / {animals.length}
           </Text>
-        </TouchableOpacity>
-        {availableFamilies.map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.famChip, familyFilter === f && styles.famChipActive]}
-            onPress={() => setFamilyFilter(familyFilter === f ? null : f)}
-          >
-            <Text
-              style={[
-                styles.famChipTxt,
-                familyFilter === f && styles.famChipTxtActive,
-              ]}
-            >
-              {f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Océans (scroll horizontal) */}
-      <View style={{ height: 44 }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.oceanScroll}
-        >
-          {oceanList.map((ocean) => (
-            <TouchableOpacity
-              key={ocean}
-              style={[
-                styles.oceanChip,
-                oceanFilter === ocean && styles.oceanChipActive,
-              ]}
-              onPress={() => setOceanFilter(ocean)}
-            >
-              <Text
-                style={[
-                  styles.oceanText,
-                  oceanFilter === ocean && styles.oceanTextActive,
-                ]}
-              >
-                {ocean === "TOUS" ? "🌍 Monde" : ocean}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        </View>
       </View>
 
+      {/* === LISTE === */}
       {visibleAnimals.length === 0 ? (
         <View style={styles.empty}>
           <Text style={{ fontSize: 48 }}>🔍</Text>
           <Text style={styles.emptyTxt}>Aucune espèce ne correspond.</Text>
+          <TouchableOpacity
+            style={styles.resetBtn}
+            onPress={() => {
+              resetFilters();
+              setSearch("");
+            }}
+          >
+            <Text style={styles.resetBtnTxt}>Réinitialiser</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={visibleAnimals}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          numColumns={2}
+          numColumns={3}
           contentContainerStyle={styles.list}
         />
+      )}
+
+      {/* === FAB FILTRES === */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={openFilterSheet}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabIcon}>⚙️</Text>
+        <Text style={styles.fabLabel}>Filtres</Text>
+        {activeFilterCount > 0 && (
+          <View style={styles.fabBadge}>
+            <Text style={styles.fabBadgeTxt}>{activeFilterCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* === BOTTOM SHEET FILTRES === */}
+      {showFilters && (
+        <Modal transparent visible animationType="none" onRequestClose={closeFilterSheet}>
+          <TouchableOpacity
+            style={styles.sheetOverlay}
+            activeOpacity={1}
+            onPress={closeFilterSheet}
+          >
+            <Animated.View
+              style={[
+                styles.sheetContainer,
+                { transform: [{ translateY: sheetAnim }] },
+              ]}
+            >
+              <TouchableOpacity activeOpacity={1}>
+                {/* Poignée */}
+                <View style={styles.sheetHandle} />
+
+                <Text style={styles.sheetTitle}>Filtres</Text>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  style={{ maxHeight: SCREEN_HEIGHT * 0.55 }}
+                >
+                  {/* Statut */}
+                  <Text style={styles.sheetSectionTitle}>Statut</Text>
+                  <View style={styles.chipsRow}>
+                    {STATUS_OPTIONS.map((s) => (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[
+                          styles.filterChip,
+                          statusFilter === s.id && styles.filterChipActive,
+                        ]}
+                        onPress={() => {
+                          setStatusFilter(s.id);
+                          H.selection();
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.filterChipTxt,
+                            statusFilter === s.id && styles.filterChipTxtActive,
+                          ]}
+                        >
+                          {s.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Famille */}
+                  <Text style={styles.sheetSectionTitle}>Famille</Text>
+                  <View style={styles.chipsWrap}>
+                    <TouchableOpacity
+                      style={[
+                        styles.filterChip,
+                        !familyFilter && styles.filterChipActive,
+                      ]}
+                      onPress={() => {
+                        setFamilyFilter(null);
+                        H.selection();
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipTxt,
+                          !familyFilter && styles.filterChipTxtActive,
+                        ]}
+                      >
+                        Toutes
+                      </Text>
+                    </TouchableOpacity>
+                    {availableFamilies.map((f) => (
+                      <TouchableOpacity
+                        key={f}
+                        style={[
+                          styles.filterChip,
+                          familyFilter === f && styles.filterChipActive,
+                        ]}
+                        onPress={() => {
+                          setFamilyFilter(familyFilter === f ? null : f);
+                          H.selection();
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.filterChipTxt,
+                            familyFilter === f && styles.filterChipTxtActive,
+                          ]}
+                        >
+                          {f}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Océan */}
+                  <Text style={styles.sheetSectionTitle}>Océan</Text>
+                  <View style={styles.chipsWrap}>
+                    {oceanList.map((ocean) => (
+                      <TouchableOpacity
+                        key={ocean}
+                        style={[
+                          styles.filterChip,
+                          oceanFilter === ocean && styles.filterChipActive,
+                        ]}
+                        onPress={() => {
+                          setOceanFilter(ocean);
+                          H.selection();
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.filterChipTxt,
+                            oceanFilter === ocean && styles.filterChipTxtActive,
+                          ]}
+                        >
+                          {ocean === "TOUS" ? "🌍 Monde" : ocean}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <View style={{ height: 16 }} />
+                </ScrollView>
+
+                {/* Actions */}
+                <View style={styles.sheetActions}>
+                  <TouchableOpacity
+                    style={styles.sheetResetBtn}
+                    onPress={resetFilters}
+                  >
+                    <Text style={styles.sheetResetTxt}>Réinitialiser</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sheetApplyBtn}
+                    onPress={() => {
+                      H.tapMedium();
+                      closeFilterSheet();
+                    }}
+                  >
+                    <Text style={styles.sheetApplyTxt}>
+                      Appliquer ({visibleAnimals.length})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Modal>
       )}
 
       {/* ===== MODAL ZOOM ===== */}
@@ -592,83 +737,41 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     elevation: 2,
   },
-  familyChipsScroll: { marginBottom: 12, height: 40, flexGrow: 0 },
-  familyChips: {
-    paddingHorizontal: 15,
-    flexDirection: "row",
-    alignItems: "center",
-  },
   searchIcon: { fontSize: 14, marginRight: 8, opacity: 0.6 },
   searchInput: { flex: 1, fontSize: 14, color: "#333", padding: 0 },
   searchClear: { fontSize: 16, color: "#999", paddingHorizontal: 6 },
 
-  // Statut
-  row: {
+  // Tri compact
+  sortRow: {
     flexDirection: "row",
-    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
     marginBottom: 8,
-    gap: 8,
+    gap: 6,
   },
-  statusBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "#006994",
-  },
-  statusBtnActive: { backgroundColor: "#006994" },
-  statusBtnTxt: { color: "#006994", fontWeight: "bold", fontSize: 13 },
-  statusBtnTxtActive: { color: "white" },
-
-  // Tri
-  sortLabel: { color: "#666", fontSize: 12, fontWeight: "600", marginRight: 4 },
   sortChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    width: 40,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
   },
   sortChipActive: { backgroundColor: "#FFB300", borderColor: "#FFB300" },
-  sortChipTxt: { fontSize: 12, color: "#555", fontWeight: "600" },
-  sortChipTxtActive: { color: "white" },
-
-  // Familles wrap
-  familyWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    paddingHorizontal: 12,
-    marginBottom: 6,
-  },
-  famChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  famChipActive: { backgroundColor: "#0288D1", borderColor: "#0288D1" },
-  famChipTxt: { fontSize: 11, color: "#555", fontWeight: "600" },
-  famChipTxtActive: { color: "white" },
-
-  // Océans
-  oceanScroll: { paddingHorizontal: 12, alignItems: "center", gap: 6 },
-  oceanChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+  sortChipIcon: { fontSize: 16 },
+  countBox: {
+    marginLeft: "auto",
     backgroundColor: "#e1eef5",
-    borderRadius: 18,
-    height: 32,
-    justifyContent: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  oceanChipActive: { backgroundColor: "#009688" },
-  oceanText: { color: "#006994", fontSize: 12, fontWeight: "600" },
-  oceanTextActive: { color: "white" },
+  countTxt: { fontSize: 12, color: "#006994", fontWeight: "bold" },
 
-  list: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 60 },
+  // Liste
+  list: { paddingHorizontal: 8, paddingTop: 4, paddingBottom: 80 },
   empty: {
     flex: 1,
     alignItems: "center",
@@ -676,50 +779,163 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   emptyTxt: { fontSize: 14, color: "#888", marginTop: 8 },
+  resetBtn: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: "#006994",
+  },
+  resetBtnTxt: { color: "white", fontWeight: "bold", fontSize: 13 },
 
-  // Card
+  // Card (3 colonnes, plus compact et visuel)
   card: {
     flex: 1,
     backgroundColor: "white",
-    margin: 6,
-    padding: 10,
-    borderRadius: 15,
+    margin: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 16,
     alignItems: "center",
-    elevation: 3,
+    elevation: 2,
+    maxWidth: "33%",
   },
-  cardLocked: { backgroundColor: "#f9f9f9", opacity: 0.8 },
-  imageContainer: { position: "relative", marginBottom: 8 },
-  image: { width: 80, height: 80 },
-  imageLocked: { opacity: 0.2 },
-  badge: {
+  imageContainer: { position: "relative", marginBottom: 6 },
+  image: { width: 72, height: 72 },
+  imageLocked: { opacity: 0.3 },
+  statusDot: {
     position: "absolute",
-    bottom: -5,
-    right: -5,
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  statusDotTxt: { color: "white", fontSize: 10, fontWeight: "bold" },
+  cardName: {
+    fontSize: 11,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#333",
+    marginTop: 2,
+  },
+  cardRarity: { fontSize: 9, marginTop: 2 },
+
+  // FAB
+  fab: {
+    position: "absolute",
+    bottom: 90,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#006994",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    gap: 6,
+  },
+  fabIcon: { fontSize: 16 },
+  fabLabel: { color: "white", fontWeight: "bold", fontSize: 14 },
+  fabBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    backgroundColor: "#FF6F00",
     width: 22,
     height: 22,
     borderRadius: 11,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
   },
-  badgeText: { color: "white", fontSize: 11, fontWeight: "bold" },
-  name: {
-    fontSize: 13,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#333",
-  },
-  rarityTxt: { fontSize: 10, marginTop: 2 },
-  familyTag: {
-    marginTop: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: "#e3f2fd",
-    borderRadius: 8,
-    maxWidth: "95%",
-  },
-  familyTagTxt: { fontSize: 9, color: "#006994", fontWeight: "600" },
+  fabBadgeTxt: { color: "white", fontSize: 11, fontWeight: "bold" },
 
-  // Modal
+  // Bottom sheet
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  sheetContainer: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+    maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#ddd",
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#006994",
+    marginBottom: 16,
+  },
+  sheetSectionTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  chipsRow: { flexDirection: "row", gap: 8 },
+  chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: "#f0f4f8",
+    borderWidth: 1,
+    borderColor: "#e0e4e8",
+  },
+  filterChipActive: {
+    backgroundColor: "#006994",
+    borderColor: "#006994",
+  },
+  filterChipTxt: { fontSize: 13, color: "#555", fontWeight: "600" },
+  filterChipTxtActive: { color: "white" },
+  sheetActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  sheetResetBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#006994",
+    alignItems: "center",
+  },
+  sheetResetTxt: { color: "#006994", fontWeight: "bold", fontSize: 14 },
+  sheetApplyBtn: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "#006994",
+    alignItems: "center",
+  },
+  sheetApplyTxt: { color: "white", fontWeight: "bold", fontSize: 14 },
+
+  // Modal détails (inchangé)
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -735,7 +951,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   closeIcon: { position: "absolute", right: 15, top: 10, zIndex: 1 },
-  modalImage: { width: 160, height: 160, alignSelf: "center", marginBottom: 5 },
+  modalImage: {
+    width: 220,
+    height: 220,
+    alignSelf: "center",
+    marginBottom: 5,
+  },
   zoomHint: {
     textAlign: "center",
     fontSize: 10,
@@ -759,14 +980,12 @@ const styles = StyleSheet.create({
   rarityBig: { fontSize: 18 },
   miniBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   miniBadgeTxt: { color: "white", fontSize: 11, fontWeight: "bold" },
-
   statusTag: {
     padding: 8,
     borderRadius: 8,
     marginVertical: 12,
     alignSelf: "center",
   },
-
   sectionTitle: {
     fontWeight: "bold",
     fontSize: 15,
