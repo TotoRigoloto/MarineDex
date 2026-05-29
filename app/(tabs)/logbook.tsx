@@ -25,6 +25,7 @@ import { SkeletonList } from "@/components/skeleton";
 import { loadDives, saveDive, deleteDive as deleteDiveLocal } from "@/services/dives";
 import * as H from "@/services/haptics";
 import { deleteObsCloud, deleteDiveCloud } from "@/services/sync";
+import { generateUUID } from "@/services/uuid";
 import { fetchWeather, toIsoDate } from "@/services/weather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -462,7 +463,7 @@ export default function LogbookScreen() {
     };
 
     const data: Observation = {
-      id: editingLogId || crypto.randomUUID(),
+      id: editingLogId || generateUUID(),
       speciesName: speciesInput,
       date: dateInput,
       location: locationInput || "Inconnu",
@@ -693,7 +694,7 @@ export default function LogbookScreen() {
     };
 
     const dive: Dive = {
-      id: editingDiveId || crypto.randomUUID(),
+      id: editingDiveId || generateUUID(),
       tripId: diveTripId,
       date: diveDateInput || new Date().toLocaleDateString(),
       timeOfDay: diveTimeOfDay,
@@ -858,7 +859,7 @@ export default function LogbookScreen() {
     }
 
     const t: Trip = {
-      id: editingTripId || crypto.randomUUID(),
+      id: editingTripId || generateUUID(),
       name: tripName.trim(),
       country: tripCountries[0], // Rétro-compat : premier pays
       countries: tripCountries,

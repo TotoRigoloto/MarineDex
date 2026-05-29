@@ -1,7 +1,8 @@
-// Carte voyage partageable — rendue hors-écran, capturée en PNG.
-// Format 1080x1350 (post Instagram carré-ish), lisible et beau sur tous les réseaux.
+// Carte voyage partageable — format story Instagram 1080×1920.
+// Rendue hors-écran, capturée en PNG via react-native-view-shot.
+// Fond = snapshot MapView (passé en prop) + tracé des spots stylisé.
 import {
-  ENCYCLOPEDIA_DATA,
+  Dive,
   getTripCountries,
   Observation,
   Trip,
@@ -9,20 +10,21 @@ import {
 import React, { forwardRef } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-// Déduit les étapes du voyage (pays distincts visités, dans l'ordre chrono des obs)
+function parseDmySimple(dmy: string): number {
+  const m = dmy?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return 0;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
+}
+
+// Déduit les étapes du voyage (lieux distincts visités, ordre chrono)
 function buildRouteSteps(
   trip: Trip,
   observations: Observation[],
 ): string[] {
-  // Essaie d'extraire les pays dans l'ordre des observations
   const seen = new Set<string>();
   const steps: string[] = [];
   [...observations]
-    .sort((a, b) => {
-      const da = parseDmySimple(a.date);
-      const db = parseDmySimple(b.date);
-      return da - db;
-    })
+    .sort((a, b) => parseDmySimple(a.date) - parseDmySimple(b.date))
     .forEach((o) => {
       if (o.location && !seen.has(o.location)) {
         seen.add(o.location);
@@ -30,171 +32,174 @@ function buildRouteSteps(
       }
     });
   if (steps.length > 0) return steps.slice(0, 6);
-  // Fallback sur les pays du voyage
   return getTripCountries(trip).slice(0, 6);
 }
 
-function parseDmySimple(dmy: string): number {
-  const m = dmy?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return 0;
-  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
+// Formate des minutes totales → "XhXX"
+function formatTotalTime(minutes: number): string {
+  if (minutes <= 0) return "--";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
 interface Props {
   trip: Trip;
   observations: Observation[];
+  dives: Dive[];
+  mapSnapshotUri?: string; // URI du snapshot MapView en fond
   username?: string;
 }
 
 const W = 1080;
-const H = 1350;
+const H = 1920;
 
 const ShareableTripCard = forwardRef<View, Props>(
-  ({ trip, observations, username }, ref) => {
+  ({ trip, observations, dives, mapSnapshotUri, username }, ref) => {
     const uniqueSpecies = [
       ...new Set(observations.map((o) => o.speciesName)),
     ];
     const routeSteps = buildRouteSteps(trip, observations);
-    // Top 4 espèces avec image (priorité photo user, sinon encyclopédie)
-    const topSpecies = uniqueSpecies.slice(0, 4).map((name) => {
-      const obs = observations.find((o) => o.speciesName === name);
-      const ency = ENCYCLOPEDIA_DATA[name];
-      let img: any = null;
-      if (obs?.userPhoto && obs.userPhoto.startsWith("file:"))
-        img = { uri: obs.userPhoto };
-      else if (ency?.image) img = ency.image;
-      return { name, img };
-    });
-
     const days = new Set(observations.map((o) => o.date)).size;
+
+    // Durée cumulée sous l'eau (somme des durées de plongées)
+    const totalMinutes = dives.reduce(
+      (acc, d) => acc + (d.durationMin ?? 0),
+      0,
+    );
 
     return (
       <View ref={ref} collapsable={false} style={styles.root}>
-        {/* Fond dégradé bleu marine simulé par 3 couches */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#001a2c" }]} />
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: "#004d70", opacity: 0.6, top: H * 0.3 },
-          ]}
-        />
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: trip.color, opacity: 0.25, top: H * 0.6 },
-          ]}
-        />
+        {/* Fond : snapshot MapView ou dégradé bleu */}
+        {mapSnapshotUri ? (
+          <Image
+            source={{ uri: mapSnapshotUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: "#001a2c" }]}
+          />
+        )}
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.brand}>🌊 MarineDex</Text>
-          {username && (
-            <Text style={styles.username}>par {username}</Text>
-          )}
-        </View>
+        {/* Overlays pour lisibilité */}
+        <View style={styles.overlayTop} />
+        <View style={styles.overlayBottom} />
 
-        {/* Cover du voyage */}
-        <View style={styles.coverWrap}>
-          {trip.coverPhoto ? (
-            <Image
-              source={{ uri: trip.coverPhoto }}
-              style={styles.cover}
-              resizeMode="cover"
+        {/* Contenu */}
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.brand}>🌊 MarineDex</Text>
+            {username && (
+              <Text style={styles.username}>par {username}</Text>
+            )}
+          </View>
+
+          {/* Badge type */}
+          <View style={styles.badgeRow}>
+            <View style={[styles.badge, { borderColor: trip.color + "80" }]}>
+              <Text style={[styles.badgeText, { color: trip.color }]}>
+                VOYAGE
+              </Text>
+            </View>
+          </View>
+
+          {/* Titre + pays + dates */}
+          <Text style={styles.title} numberOfLines={2}>
+            {trip.name}
+          </Text>
+          <Text style={styles.country}>
+            📍 {getTripCountries(trip).join(" · ")}
+          </Text>
+          <Text style={styles.dates}>
+            {trip.startDate} → {trip.endDate}
+          </Text>
+
+          {/* Spacer — laisse la map visible au centre */}
+          <View style={{ flex: 1, minHeight: 80 }} />
+
+          {/* Stats row 1 : 3 colonnes (plongées, temps sous l'eau, jours) */}
+          <View style={styles.statsRow}>
+            <StatCard
+              value={String(dives.length)}
+              label="PLONGÉES"
+              accent
+              color={trip.color}
             />
-          ) : (
-            <View style={[styles.cover, { backgroundColor: trip.color }]}>
-              <Text style={{ fontSize: 180 }}>🌊</Text>
+            <StatCard
+              value={formatTotalTime(totalMinutes)}
+              label="SOUS L'EAU"
+              accent
+              color={trip.color}
+            />
+            <StatCard
+              value={String(days)}
+              label="JOURS"
+              accent
+              color={trip.color}
+            />
+          </View>
+
+          {/* Stats row 2 : 2 colonnes (observations, espèces) */}
+          <View style={[styles.statsRow, { marginTop: 16 }]}>
+            <StatCard
+              value={String(observations.length)}
+              label="OBSERVATIONS"
+            />
+            <StatCard
+              value={String(uniqueSpecies.length)}
+              label="ESPÈCES"
+            />
+          </View>
+
+          {/* Route strip — tracé textuel des étapes */}
+          {routeSteps.length > 1 && (
+            <View style={styles.routeStrip}>
+              {routeSteps.map((step, i) => (
+                <React.Fragment key={i}>
+                  <View style={styles.routeStepWrap}>
+                    <View
+                      style={[
+                        styles.routeDot,
+                        { backgroundColor: trip.color },
+                      ]}
+                    >
+                      <Text style={styles.routeDotText}>{i + 1}</Text>
+                    </View>
+                    <Text style={styles.routeStepLabel} numberOfLines={1}>
+                      {step}
+                    </Text>
+                  </View>
+                  {i < routeSteps.length - 1 && (
+                    <View style={styles.routeLineWrap}>
+                      {[0, 1, 2].map((d) => (
+                        <View
+                          key={d}
+                          style={[
+                            styles.routeLineDash,
+                            { backgroundColor: trip.color },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </React.Fragment>
+              ))}
             </View>
           )}
-          <View style={[styles.colorBar, { backgroundColor: trip.color }]} />
-        </View>
 
-        {/* Titre + pays + dates */}
-        <Text style={styles.title} numberOfLines={2}>
-          {trip.name}
-        </Text>
-        <Text style={styles.country}>
-          📍 {getTripCountries(trip).join(" · ")}
-        </Text>
-        <Text style={styles.dates}>
-          {trip.startDate} → {trip.endDate}
-        </Text>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <StatBig value={String(observations.length)} label="Observations" />
-          <StatBig value={String(uniqueSpecies.length)} label="Espèces" />
-          <StatBig value={String(days)} label="Jours" />
-        </View>
-
-        {/* Route strip — trajet visuel */}
-        {routeSteps.length > 1 && (
-          <View style={styles.routeStrip}>
-            {routeSteps.map((step, i) => (
-              <React.Fragment key={i}>
-                <View style={styles.routeStepWrap}>
-                  <View
-                    style={[
-                      styles.routeDot,
-                      { backgroundColor: trip.color },
-                    ]}
-                  >
-                    <Text style={styles.routeDotText}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.routeStepLabel} numberOfLines={1}>
-                    {step}
-                  </Text>
-                </View>
-                {i < routeSteps.length - 1 && (
-                  <View style={styles.routeLineWrap}>
-                    {[0, 1, 2].map((d) => (
-                      <View
-                        key={d}
-                        style={[
-                          styles.routeLineDash,
-                          { backgroundColor: trip.color },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                )}
-              </React.Fragment>
-            ))}
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerTagline}>
+              Explorez. Identifiez. Protégez.
+            </Text>
+            <Text style={styles.footerRevosea}>
+              🐬 En partenariat avec Revosea
+            </Text>
           </View>
-        )}
-
-        {/* Top espèces */}
-        {topSpecies.length > 0 && (
-          <View style={styles.speciesGrid}>
-            {topSpecies.map((s, i) => (
-              <View key={i} style={styles.speciesItem}>
-                <View style={styles.speciesAvatar}>
-                  {s.img ? (
-                    <Image
-                      source={s.img}
-                      style={styles.speciesImg}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Text style={{ fontSize: 40 }}>🐠</Text>
-                  )}
-                </View>
-                <Text style={styles.speciesName} numberOfLines={2}>
-                  {s.name}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerTagline}>
-            Explorez. Identifiez. Protégez.
-          </Text>
-          <Text style={styles.footerRevosea}>
-            🐬 En partenariat avec Revosea
-          </Text>
         </View>
       </View>
     );
@@ -204,10 +209,28 @@ const ShareableTripCard = forwardRef<View, Props>(
 ShareableTripCard.displayName = "ShareableTripCard";
 export default ShareableTripCard;
 
-const StatBig = ({ value, label }: { value: string; label: string }) => (
-  <View style={styles.statBig}>
-    <Text style={styles.statBigValue}>{value}</Text>
-    <Text style={styles.statBigLabel}>{label}</Text>
+// --- Sous-composant stat ---
+const StatCard = ({
+  value,
+  label,
+  accent,
+  color,
+}: {
+  value: string;
+  label: string;
+  accent?: boolean;
+  color?: string;
+}) => (
+  <View style={styles.statCard}>
+    <Text
+      style={[
+        styles.statValue,
+        accent && { color: color || "#FFB300" },
+      ]}
+    >
+      {value}
+    </Text>
+    <Text style={styles.statLabel}>{label}</Text>
   </View>
 );
 
@@ -215,10 +238,30 @@ const styles = StyleSheet.create({
   root: {
     width: W,
     height: H,
-    paddingHorizontal: 80,
-    paddingVertical: 70,
     overflow: "hidden",
   },
+
+  overlayTop: {
+    ...StyleSheet.absoluteFillObject,
+    height: H * 0.3,
+    backgroundColor: "rgba(0,26,44,0.75)",
+  },
+  overlayBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: H * 0.55,
+    backgroundColor: "rgba(0,26,44,0.88)",
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 70,
+    paddingTop: 60,
+    paddingBottom: 50,
+  },
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -232,77 +275,70 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   username: {
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.6)",
     fontSize: 26,
     fontStyle: "italic",
   },
 
-  coverWrap: {
-    width: "100%",
-    height: 420,
-    borderRadius: 30,
-    overflow: "hidden",
-    elevation: 10,
-    marginBottom: 24,
-    position: "relative",
+  badgeRow: {
+    flexDirection: "row",
+    marginBottom: 16,
   },
-  cover: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
+  badge: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 28,
+    paddingVertical: 8,
   },
-  colorBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 10,
+  badgeText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    letterSpacing: 3,
   },
 
   title: {
     color: "white",
-    fontSize: 64,
+    fontSize: 60,
     fontWeight: "bold",
-    textShadowColor: "rgba(0,0,0,0.4)",
-    textShadowRadius: 6,
-    lineHeight: 70,
+    lineHeight: 68,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowRadius: 8,
   },
   country: {
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(255,255,255,0.85)",
     fontSize: 32,
-    marginTop: 6,
+    marginTop: 8,
   },
   dates: {
-    color: "rgba(255,255,255,0.75)",
+    color: "rgba(255,255,255,0.55)",
     fontSize: 26,
     marginTop: 4,
   },
 
   statsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 36,
-    gap: 20,
+    gap: 16,
   },
-  statBig: {
+  statCard: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.12)",
     borderRadius: 24,
     paddingVertical: 28,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.18)",
   },
-  statBigValue: {
+  statValue: {
     color: "white",
-    fontSize: 64,
+    fontSize: 52,
     fontWeight: "bold",
   },
-  statBigLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 22,
-    marginTop: 4,
+  statLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 16,
+    marginTop: 6,
+    letterSpacing: 1,
     fontWeight: "600",
   },
 
@@ -310,7 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 30,
+    marginTop: 32,
     paddingHorizontal: 10,
   },
   routeStepWrap: {
@@ -332,7 +368,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   routeStepLabel: {
-    color: "rgba(255,255,255,0.85)",
+    color: "rgba(255,255,255,0.8)",
     fontSize: 16,
     marginTop: 6,
     textAlign: "center",
@@ -352,47 +388,17 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  speciesGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 36,
-    gap: 16,
-  },
-  speciesItem: { flex: 1, alignItems: "center" },
-  speciesAvatar: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  speciesImg: { width: 130, height: 130 },
-  speciesName: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 10,
-    textAlign: "center",
-    maxWidth: 180,
-  },
-
   footer: {
-    position: "absolute",
-    bottom: 50,
-    left: 0,
-    right: 0,
+    marginTop: 32,
     alignItems: "center",
   },
   footerTagline: {
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.5)",
     fontSize: 22,
     fontStyle: "italic",
   },
   footerRevosea: {
-    color: "rgba(255,255,255,0.6)",
+    color: "rgba(255,255,255,0.4)",
     fontSize: 20,
     marginTop: 6,
   },

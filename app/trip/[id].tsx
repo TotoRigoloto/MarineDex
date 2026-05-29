@@ -5,6 +5,7 @@
 // - Timeline : observations groupées par jour (ordre chronologique)
 // - Galerie : grille des photos (utilisateur + encyclopédie)
 // - Export : génère un PNG partageable du voyage
+import ShareableDiveCard from "@/components/shareable-dive-card";
 import ShareableTripCard from "@/components/shareable-trip-card";
 import {
   COUNTRY_COORDINATES,
@@ -59,7 +60,11 @@ export default function TripDetailScreen() {
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [username, setUsername] = useState<string | undefined>(undefined);
   const [exporting, setExporting] = useState(false);
+  const [shareDive, setShareDive] = useState<Dive | null>(null); // plongée en cours de partage
+  const [mapSnapshot, setMapSnapshot] = useState<string | undefined>(undefined);
   const shareRef = useRef<View>(null);
+  const diveShareRef = useRef<View>(null);
+  const shareMapRef = useRef<MapView>(null); // MapView hors-écran pour snapshot
   const mapRef = useRef<MapView>(null);
 
   useFocusEffect(
@@ -85,16 +90,33 @@ export default function TripDetailScreen() {
     }, [id]),
   );
 
+  // Partage du voyage : capture le snapshot MapView en fond puis la carte
   const handleShare = async () => {
     if (!trip) return;
     H.tapHeavy();
     setExporting(true);
     try {
-      // Petit délai pour laisser le rendu off-screen se calmer avant capture
-      await new Promise((r) => setTimeout(r, 250));
+      // Capture le snapshot MapView hors-écran pour le fond de la carte
+      let snapUri: string | undefined;
+      if (shareMapRef.current && routePoints.length > 0) {
+        try {
+          snapUri = await shareMapRef.current.takeSnapshot({
+            width: 1080,
+            height: 1920,
+            format: "png",
+            quality: 0.9,
+            result: "file",
+          });
+          setMapSnapshot(snapUri);
+        } catch {
+          // Pas grave, on aura le fallback dégradé bleu
+        }
+      }
+      // Petit délai pour laisser le rendu se calmer avec le snapshot
+      await new Promise((r) => setTimeout(r, 400));
       await captureAndShare(shareRef, {
         fileName: `marinedex-${trip.name}.png`,
-        dialogTitle: `Partager &laquo; ${trip.name} &raquo;`,
+        dialogTitle: `Partager « ${trip.name} »`,
       });
       H.success();
     } catch (e: any) {
@@ -105,6 +127,31 @@ export default function TripDetailScreen() {
       );
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Partage d'une plongée individuelle
+  const handleShareDive = async (dive: Dive) => {
+    H.tapHeavy();
+    setShareDive(dive);
+    setExporting(true);
+    try {
+      // Délai pour laisser le rendu hors-écran de la DiveCard
+      await new Promise((r) => setTimeout(r, 400));
+      await captureAndShare(diveShareRef, {
+        fileName: `marinedex-dive-${dive.date}.png`,
+        dialogTitle: `Partager plongée du ${dive.date}`,
+      });
+      H.success();
+    } catch (e: any) {
+      H.error();
+      Alert.alert(
+        "Erreur",
+        e?.message ?? "Impossible de générer l'image de partage.",
+      );
+    } finally {
+      setExporting(false);
+      setShareDive(null);
     }
   };
 
@@ -490,9 +537,25 @@ export default function TripDetailScreen() {
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#006994" }}>
                           {dive.date} — {TIME_OF_DAY_LABELS[dive.timeOfDay]}
                         </Text>
-                        <Text style={{ fontSize: 12, color: "#888" }}>
-                          📍 {dive.country}
-                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                          <Text style={{ fontSize: 12, color: "#888" }}>
+                            📍 {dive.country}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleShareDive(dive)}
+                            disabled={exporting}
+                            style={{
+                              backgroundColor: "#FFB300",
+                              borderRadius: 14,
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            <Text style={{ color: "white", fontSize: 11, fontWeight: "700" }}>
+                              📤
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
                         {dive.depthMax != null && (
@@ -629,18 +692,108 @@ export default function TripDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Composant hors-écran à capturer pour le partage. */}
-      {/* `pointerEvents=none` + position absolue hors-champ : invisible mais rendu. */}
-      <View
-        style={styles.offscreenCapture}
-        pointerEvents="none"
-      >
+      {/* Composants hors-écran à capturer pour le partage */}
+      <View style={styles.offscreenCapture} pointerEvents="none">
+        {/* Carte voyage */}
         <ShareableTripCard
           ref={shareRef}
           trip={trip}
           observations={logs}
+          dives={tripDives}
+          mapSnapshotUri={mapSnapshot}
           username={username}
         />
+
+        {/* Carte plongée (rendue uniquement quand on partage une plongée) */}
+        {shareDive && (
+          <ShareableDiveCard
+            ref={diveShareRef}
+            dive={shareDive}
+            observations={logs.filter((l) => l.diveId === shareDive.id)}
+            backgroundPhoto={
+              // Première photo d'observation de cette plongée comme fond
+              logs.find(
+                (l) => l.diveId === shareDive.id && l.userPhoto,
+              )?.userPhoto
+            }
+            username={username}
+          />
+        )}
+
+        {/* MapView hors-écran pour le snapshot du fond de la carte voyage */}
+        {routePoints.length > 0 && (
+          <MapView
+            ref={shareMapRef}
+            style={{ width: 1080, height: 1920 }}
+            initialRegion={region}
+            mapType="standard"
+            onMapReady={() => {
+              if (routePoints.length > 1 && shareMapRef.current) {
+                shareMapRef.current.fitToCoordinates(
+                  routePoints.map((p) => ({
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                  })),
+                  {
+                    edgePadding: {
+                      top: 300,
+                      right: 100,
+                      bottom: 300,
+                      left: 100,
+                    },
+                    animated: false,
+                  },
+                );
+              }
+            }}
+            pointerEvents="none"
+          >
+            {routePoints.length > 1 && (
+              <Polyline
+                coordinates={routePoints.map((p) => ({
+                  latitude: p.latitude,
+                  longitude: p.longitude,
+                }))}
+                strokeColor={trip.color}
+                strokeWidth={4}
+                lineDashPattern={[8, 6]}
+              />
+            )}
+            {routePoints.map((pt, i) => (
+              <Marker
+                key={`share-route-${i}`}
+                coordinate={{
+                  latitude: pt.latitude,
+                  longitude: pt.longitude,
+                }}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: trip.color,
+                    borderWidth: 2,
+                    borderColor: "white",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "white",
+                      fontSize: 13,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {pt.label}
+                  </Text>
+                </View>
+              </Marker>
+            ))}
+          </MapView>
+        )}
       </View>
     </View>
   );

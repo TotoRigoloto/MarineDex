@@ -15,6 +15,7 @@ import {
 import { STORAGE_KEYS } from "@/constants/Storage";
 import * as H from "@/services/haptics";
 import { supabase } from "@/services/supabase";
+import { generateUUID } from "@/services/uuid";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
@@ -207,7 +208,7 @@ export default function HomeScreen() {
       }
 
       const newLog: Observation = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         speciesName: chosenSpecies,
         date: new Date().toLocaleDateString(),
         userPhoto: tempPhotoUri,
