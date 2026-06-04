@@ -54,7 +54,7 @@ import MapView from "react-native-maps";
 type Mode = "trips" | "observations";
 
 export default function LogbookScreen() {
-  const params = useLocalSearchParams<{ newObsForTrip?: string }>();
+  const params = useLocalSearchParams<{ newObsForTrip?: string; newDiveForTrip?: string; newObsForDive?: string }>();
   const [logs, setLogs] = useState<Observation[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [mode, setMode] = useState<Mode>("trips");
@@ -649,6 +649,60 @@ export default function LogbookScreen() {
       setDiveFormVisible(true);
     },
     [trips],
+  );
+
+  // Auto-ouverture du form de plongée quand on vient de trip/[id] avec ?newDiveForTrip=xxx
+  useFocusEffect(
+    useCallback(() => {
+      if (!params.newDiveForTrip) return;
+      const t = setTimeout(() => {
+        setMode("trips");
+        openNewDiveModal(params.newDiveForTrip);
+        router.setParams({ newDiveForTrip: undefined } as any);
+      }, 300);
+      return () => clearTimeout(t);
+    }, [params.newDiveForTrip, openNewDiveModal]),
+  );
+
+  // Auto-ouverture du form d'observation pré-rattaché à une plongée (?newObsForDive=xxx)
+  useFocusEffect(
+    useCallback(() => {
+      if (!params.newObsForDive) return;
+      const t = setTimeout(() => {
+        const dive = dives.find((d) => d.id === params.newObsForDive);
+        if (dive) {
+          setMode("observations");
+          setEditingLogId(null);
+          setSpeciesInput("");
+          setLocationInput(dive.country);
+          setOceanInput(dive.ocean);
+          setOceanOptions([]);
+          setDateInput(dive.date);
+          setNotesInput("");
+          setSelectedPhoto(undefined);
+          setFilteredSpecies([]);
+          setFilteredLocations([]);
+          setObsTripId(dive.tripId);
+          setObsDiveId(dive.id);
+          setDepthInput(dive.depthMax != null ? String(dive.depthMax) : "");
+          setDurationInput(dive.durationMin != null ? String(dive.durationMin) : "");
+          setVisibilityInput(dive.visibilityM != null ? String(dive.visibilityM) : "");
+          setWaterTempInput(dive.waterTempC != null ? String(dive.waterTempC) : "");
+          setWeatherSnapshot(dive.weather);
+          if (dive.depthMax || dive.durationMin || dive.visibilityM || dive.waterTempC || dive.weather) {
+            setShowDiveDetails(true);
+          }
+          if (dive.latitude && dive.longitude) {
+            setExactCoords({ latitude: dive.latitude, longitude: dive.longitude });
+          } else {
+            setExactCoords(null);
+          }
+          setFormVisible(true);
+        }
+        router.setParams({ newObsForDive: undefined } as any);
+      }, 300);
+      return () => clearTimeout(t);
+    }, [params.newObsForDive, dives]),
   );
 
   // Édition d'une plongée existante (long-press sur une dive card)
@@ -1388,43 +1442,45 @@ export default function LogbookScreen() {
 
                 {/* Conditions */}
                 <Text style={styles.label}>Conditions (optionnel)</Text>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <View style={{ flex: 1 }}>
+                <View style={styles.diveGrid}>
+                  <View style={styles.diveCell}>
+                    <Text style={styles.diveLbl}>📏 Profondeur (m)</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Prof. max (m)"
+                      placeholder="ex: 32"
                       value={diveDepthInput}
                       onChangeText={setDiveDepthInput}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.diveCell}>
+                    <Text style={styles.diveLbl}>⏱️ Durée (min)</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Durée (min)"
+                      placeholder="ex: 55"
                       value={diveDurationInput}
                       onChangeText={setDiveDurationInput}
-                      keyboardType="numeric"
+                      keyboardType="number-pad"
                     />
                   </View>
-                </View>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.diveCell}>
+                    <Text style={styles.diveLbl}>👁️ Visibilité (m)</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Visibilité (m)"
+                      placeholder="ex: 20"
                       value={diveVisibilityInput}
                       onChangeText={setDiveVisibilityInput}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.diveCell}>
+                    <Text style={styles.diveLbl}>🌡️ T° eau (°C)</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="T° eau (°C)"
+                      placeholder="ex: 26"
                       value={diveWaterTempInput}
                       onChangeText={setDiveWaterTempInput}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                     />
                   </View>
                 </View>
@@ -1988,6 +2044,20 @@ export default function LogbookScreen() {
                               setOceanInput(d.ocean);
                               setDateInput(d.date);
                               if (d.tripId) setObsTripId(d.tripId);
+                              // Propager les conditions de la plongée
+                              if (d.depthMax != null) setDepthInput(String(d.depthMax));
+                              if (d.durationMin != null) setDurationInput(String(d.durationMin));
+                              if (d.visibilityM != null) setVisibilityInput(String(d.visibilityM));
+                              if (d.waterTempC != null) setWaterTempInput(String(d.waterTempC));
+                              if (d.weather) setWeatherSnapshot(d.weather);
+                              // Ouvrir la section si des conditions existent
+                              if (d.depthMax || d.durationMin || d.visibilityM || d.waterTempC || d.weather) {
+                                setShowDiveDetails(true);
+                              }
+                              // Pré-remplir les coordonnées si dispo
+                              if (d.latitude && d.longitude) {
+                                setExactCoords({ latitude: d.latitude, longitude: d.longitude });
+                              }
                               H.tapLight();
                             }}
                           >

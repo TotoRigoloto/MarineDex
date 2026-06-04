@@ -90,30 +90,14 @@ export default function TripDetailScreen() {
     }, [id]),
   );
 
-  // Partage du voyage : capture le snapshot MapView en fond puis la carte
+  // Partage du voyage : le snapshot MapView est pré-capturé au onMapReady
   const handleShare = async () => {
     if (!trip) return;
     H.tapHeavy();
     setExporting(true);
     try {
-      // Capture le snapshot MapView hors-écran pour le fond de la carte
-      let snapUri: string | undefined;
-      if (shareMapRef.current && routePoints.length > 0) {
-        try {
-          snapUri = await shareMapRef.current.takeSnapshot({
-            width: 1080,
-            height: 1920,
-            format: "png",
-            quality: 0.9,
-            result: "file",
-          });
-          setMapSnapshot(snapUri);
-        } catch {
-          // Pas grave, on aura le fallback dégradé bleu
-        }
-      }
-      // Petit délai pour laisser le rendu se calmer avec le snapshot
-      await new Promise((r) => setTimeout(r, 400));
+      // Petit délai pour laisser le rendu se calmer
+      await new Promise((r) => setTimeout(r, 300));
       await captureAndShare(shareRef, {
         fileName: `marinedex-${trip.name}.png`,
         dialogTitle: `Partager « ${trip.name} »`,
@@ -334,7 +318,15 @@ export default function TripDetailScreen() {
               router.push(`/(tabs)/logbook?newObsForTrip=${trip.id}` as any)
             }
           >
-            <Text style={styles.ctaBarBtnTxt}>+ Observation</Text>
+            <Text style={styles.ctaBarBtnTxt}>+ Obs</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ctaBarBtn, { backgroundColor: "#26A69A" }]}
+            onPress={() =>
+              router.push(`/(tabs)/logbook?newDiveForTrip=${trip.id}` as any)
+            }
+          >
+            <Text style={styles.ctaBarBtnTxt}>+ Plongée</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.ctaBarBtn, { backgroundColor: "#FFB300" }]}
@@ -505,9 +497,19 @@ export default function TripDetailScreen() {
               🤿 Plongées ({tripDives.length})
             </Text>
             {tripDives.length === 0 ? (
-              <Text style={{ color: "#888", fontStyle: "italic", marginLeft: 15 }}>
-                Aucune plongée enregistrée pour ce voyage.
-              </Text>
+              <View style={styles.emptyObs}>
+                <Text style={{ color: "#666", textAlign: "center" }}>
+                  Aucune plongée enregistrée pour ce voyage.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.openMapBtn, { marginTop: 12, position: "relative", right: 0, bottom: 0 }]}
+                  onPress={() =>
+                    router.push(`/(tabs)/logbook?newDiveForTrip=${trip.id}` as any)
+                  }
+                >
+                  <Text style={styles.openMapBtnTxt}>+ Ajouter une plongée</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               tripDives
                 .sort((a, b) => {
@@ -518,8 +520,14 @@ export default function TripDetailScreen() {
                 .map((dive) => {
                   const diveObs = logs.filter((l) => l.diveId === dive.id);
                   return (
-                    <View
+                    <TouchableOpacity
                       key={dive.id}
+                      activeOpacity={0.7}
+                      onPress={() =>
+                        router.push(
+                          `/(tabs)/logbook?newObsForDive=${dive.id}` as any,
+                        )
+                      }
                       style={{
                         backgroundColor: "white",
                         borderRadius: 12,
@@ -596,10 +604,25 @@ export default function TripDetailScreen() {
                           ))}
                         </View>
                       )}
-                    </View>
+                      {/* CTA ajout observation */}
+                      <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingTop: 8, alignItems: "center" }}>
+                        <Text style={{ fontSize: 12, color: "#0288D1", fontWeight: "600" }}>
+                          + Ajouter une observation
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   );
                 })
             )}
+            {/* Bouton ajouter une plongée (toujours visible) */}
+            <TouchableOpacity
+              style={styles.addObsBtn}
+              onPress={() =>
+                router.push(`/(tabs)/logbook?newDiveForTrip=${trip.id}` as any)
+              }
+            >
+              <Text style={styles.addObsBtnTxt}>+ Ajouter une plongée</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -745,6 +768,20 @@ export default function TripDetailScreen() {
                   },
                 );
               }
+              // Pré-capture le snapshot dès que la map est prête (tiles chargées)
+              setTimeout(async () => {
+                if (!shareMapRef.current) return;
+                try {
+                  const uri = await shareMapRef.current.takeSnapshot({
+                    width: 1080,
+                    height: 1920,
+                    format: "png",
+                    quality: 0.9,
+                    result: "file",
+                  });
+                  setMapSnapshot(uri);
+                } catch {}
+              }, 1500);
             }}
             pointerEvents="none"
           >

@@ -19,9 +19,12 @@ import {
 import * as H from "@/services/haptics";
 import {
   buildShareText,
+  computeGoals,
   computeStreak,
-  monthlyGoals,
-  weeklyGoals,
+  GoalSection,
+  USER_MODE_DESCRIPTIONS,
+  USER_MODE_LABELS,
+  UserMode,
 } from "@/services/stats";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
@@ -226,6 +229,8 @@ export default function ProfileScreen() {
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
+  const [userMode, setUserMode] = useState<UserMode>("regular");
+  const [showModeSelector, setShowModeSelector] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -238,6 +243,7 @@ export default function ProfileScreen() {
             STORAGE_KEYS.AVATAR_ID,
             STORAGE_KEYS.USERNAME,
             STORAGE_KEYS.TRIPS,
+            STORAGE_KEYS.USER_MODE,
           ]);
           const map = Object.fromEntries(stored) as Record<
             string,
@@ -271,6 +277,8 @@ export default function ProfileScreen() {
             setAvatarId(map[STORAGE_KEYS.AVATAR_ID]!);
           if (map[STORAGE_KEYS.USERNAME])
             setUsername(map[STORAGE_KEYS.USERNAME]!);
+          if (map[STORAGE_KEYS.USER_MODE])
+            setUserMode(map[STORAGE_KEYS.USER_MODE]! as UserMode);
 
           calculateXp(parsedPokedex, parsedLogs, parsedTrips);
         } catch (e) {
@@ -337,10 +345,15 @@ export default function ProfileScreen() {
     [logs, pokedex, trips],
   );
 
-  // ===== Streak + objectifs =====
-  const streak = useMemo(() => computeStreak(logs), [logs]);
-  const weekly = useMemo(() => weeklyGoals(logs, pokedex), [logs, pokedex]);
-  const monthly = useMemo(() => monthlyGoals(logs), [logs]);
+  // ===== Streak + objectifs (adaptés au mode utilisateur) =====
+  const streak = useMemo(
+    () => computeStreak(logs, userMode, trips),
+    [logs, userMode, trips],
+  );
+  const goalSections = useMemo<GoalSection[]>(
+    () => computeGoals(logs, pokedex, trips, userMode),
+    [logs, pokedex, trips, userMode],
+  );
 
   const handleShareProfile = async () => {
     H.tapHeavy();
@@ -355,7 +368,8 @@ export default function ProfileScreen() {
           logs.map((l) => l.location).filter((x) => x && x !== "Inconnu"),
         ).size,
         trips: trips.length,
-        streakWeeks: streak.weeks,
+        streakCount: streak.count,
+        streakUnit: streak.unit,
       });
       await Share.share({ message: text, title: "Mon profil MarineDex" });
     } catch {
@@ -382,6 +396,13 @@ export default function ProfileScreen() {
     await AsyncStorage.setItem(STORAGE_KEYS.USERNAME, editName.trim());
     setShowNameEditor(false);
     H.tapMedium();
+  };
+
+  const saveMode = async (mode: UserMode) => {
+    setUserMode(mode);
+    setShowModeSelector(false);
+    await AsyncStorage.setItem(STORAGE_KEYS.USER_MODE, mode);
+    H.tapLight();
   };
 
   const buddyAnimal = buddyId ? pokedex.find((a) => a.name === buddyId) : null;
@@ -464,6 +485,15 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             )}
+            {/* Chip mode marin — tap pour changer */}
+            <TouchableOpacity
+              style={styles.modeChip}
+              onPress={() => setShowModeSelector(true)}
+            >
+              <Text style={styles.modeChipText}>
+                {USER_MODE_LABELS[userMode]}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -487,22 +517,31 @@ export default function ProfileScreen() {
           <View
             style={[
               styles.streakCard,
-              streak.activeThisWeek
+              streak.activeThisPeriod
                 ? { backgroundColor: "#FF6F00" }
                 : { backgroundColor: "#90A4AE" },
             ]}
           >
             <Text style={styles.streakEmoji}>🔥</Text>
-            <Text style={styles.streakValue}>{streak.weeks}</Text>
+            <Text style={styles.streakValue}>{streak.count}</Text>
             <Text style={styles.streakLabel}>
-              semaine{streak.weeks > 1 ? "s" : ""} d&apos;affilée
+              {streak.unit === "voyage"
+                ? `voyage${streak.count > 1 ? "s" : ""} documenté${streak.count > 1 ? "s" : ""}`
+                : streak.unit === "mois"
+                  ? `mois d'affilée`
+                  : `semaine${streak.count > 1 ? "s" : ""} d'affilée`}
             </Text>
-            {!streak.activeThisWeek && streak.weeks > 0 && (
+            {/* Hint selon le mode et l'activité en cours */}
+            {!streak.activeThisPeriod && streak.count > 0 && (
               <Text style={styles.streakHint}>
-                Observe avant dimanche pour la garder !
+                {streak.unit === "voyage"
+                  ? "Planifie ton prochain voyage pour continuer !"
+                  : streak.unit === "mois"
+                    ? "Observe avant la fin du mois pour continuer !"
+                    : "Observe avant dimanche pour la garder !"}
               </Text>
             )}
-            {streak.weeks === 0 && (
+            {streak.count === 0 && (
               <Text style={styles.streakHint}>
                 Lance ton premier scan pour démarrer 🚀
               </Text>
@@ -510,18 +549,21 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginLeft: 20, marginTop: 18 }]}>
-          🎯 Cette semaine
-        </Text>
-        {weekly.map((g, i) => (
-          <GoalRow key={i} goal={g} />
-        ))}
-
-        <Text style={[styles.sectionTitle, { marginLeft: 20, marginTop: 14 }]}>
-          📅 Ce mois-ci
-        </Text>
-        {monthly.map((g, i) => (
-          <GoalRow key={i} goal={g} />
+        {/* Sections d'objectifs adaptées au mode */}
+        {goalSections.map((section, si) => (
+          <React.Fragment key={si}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { marginLeft: 20, marginTop: si === 0 ? 18 : 14 },
+              ]}
+            >
+              {section.title}
+            </Text>
+            {section.goals.map((g, gi) => (
+              <GoalRow key={gi} goal={g} />
+            ))}
+          </React.Fragment>
         ))}
 
         {/* COMPAGNON */}
@@ -740,6 +782,37 @@ export default function ProfileScreen() {
           </SafeAreaView>
         </Modal>
 
+        {/* MODE MARIN */}
+        <Modal visible={showModeSelector} animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Ton rythme marin</Text>
+              <Text style={{ color: "#888", fontSize: 13, marginBottom: 16, textAlign: "center" }}>
+                Adapte la streak et les objectifs à ta pratique
+              </Text>
+              {(["city", "coastal", "regular"] as UserMode[]).map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  style={[
+                    styles.modeOption,
+                    userMode === m && styles.modeOptionSelected,
+                  ]}
+                  onPress={() => saveMode(m)}
+                >
+                  <Text style={styles.modeOptionLabel}>{USER_MODE_LABELS[m]}</Text>
+                  <Text style={styles.modeOptionDesc}>{USER_MODE_DESCRIPTIONS[m]}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.closeButton, { marginTop: 12 }]}
+                onPress={() => setShowModeSelector(false)}
+              >
+                <Text style={styles.closeButtonText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         {/* DETAIL BADGE */}
         <Modal visible={!!selectedBadge} animationType="fade" transparent>
           <View style={styles.modalOverlay}>
@@ -931,6 +1004,15 @@ const styles = StyleSheet.create({
   },
   xpBarFill: { height: "100%", borderRadius: 4 },
   xpText: { fontSize: 10, color: "#888", marginTop: 2, textAlign: "right" },
+  modeChip: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#e3f2fd",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  modeChipText: { fontSize: 11, color: "#006994", fontWeight: "600" },
 
   statsRow: {
     flexDirection: "row",
@@ -1211,4 +1293,20 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   lockedText: { color: "#FFA000", fontStyle: "italic", marginTop: 5 },
+
+  // Sélecteur de mode marin
+  modeOption: {
+    width: "100%",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+    marginBottom: 10,
+  },
+  modeOptionSelected: {
+    borderColor: "#006994",
+    backgroundColor: "#e3f2fd",
+  },
+  modeOptionLabel: { fontSize: 15, fontWeight: "bold", color: "#333" },
+  modeOptionDesc: { fontSize: 12, color: "#666", marginTop: 3 },
 });

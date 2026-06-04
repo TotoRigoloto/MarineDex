@@ -17,6 +17,9 @@ export const STORAGE_KEYS = {
   USER_EMAIL: "user_email",
   USER_CREATED_AT: "user_created_at",
 
+  // Gamification
+  USER_MODE: "user_mode", // 'city' | 'coastal' | 'regular'
+
   // Flags
   ONBOARDING_DONE: "onboarding_done",
   HAS_ACCOUNT: "has_account",
