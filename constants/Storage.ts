@@ -21,6 +21,9 @@ export const STORAGE_KEYS = {
   USER_MODE: "user_mode", // 'city' | 'coastal' | 'regular'
   SAVAISTHON_DATES: "savaisthon_dates", // string[] de dates YYYY-MM-DD validées
 
+  // Avatar composable (nouveau système)
+  AVATAR_CONFIG: "avatar_config", // JSON AvatarConfig (voir constants/AvatarData.ts)
+
   // Flags
   ONBOARDING_DONE: "onboarding_done",
   HAS_ACCOUNT: "has_account",

@@ -1,10 +1,12 @@
 // Profil enrichi :
-// - Vrais avatars (presets variés avec couleur de fond + emoji personnage)
+// - Avatar composable SVG (peau, cheveux, visage, tenue, accessoire)
 // - Pseudo personnalisable
 // - Stats détaillées (voyages, observations, espèces, pays, photos)
-// - Streak (semaines consécutives) + objectifs hebdo/mensuels
+// - Streak adaptative selon le mode utilisateur
 // - Badges enrichis avec progression visuelle
-// - Partage du profil (texte) et lien vers Revosea
+// - Partage du profil et lien vers Revosea
+import AvatarBuilder from "@/components/avatar-builder";
+import AvatarDisplay from "@/components/avatar-display";
 import {
   Animal,
   initialAnimals,
@@ -12,10 +14,10 @@ import {
   Trip,
 } from "@/constants/MarineData";
 import {
-  AVATAR_PRESETS,
-  getAvatarById,
-  STORAGE_KEYS,
-} from "@/constants/Storage";
+  AvatarConfig,
+  DEFAULT_AVATAR_CONFIG,
+} from "@/constants/AvatarData";
+import { STORAGE_KEYS } from "@/constants/Storage";
 import * as H from "@/services/haptics";
 import {
   buildShareText,
@@ -220,12 +222,12 @@ export default function ProfileScreen() {
   const [pokedex, setPokedex] = useState<Animal[]>(initialAnimals);
 
   const [username, setUsername] = useState("Explorateur");
-  const [avatarId, setAvatarId] = useState<string>(AVATAR_PRESETS[0].id);
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
   const [buddyId, setBuddyId] = useState<string | null>(null);
 
   // Modals
   const [showBuddySelector, setShowBuddySelector] = useState(false);
-  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
@@ -241,7 +243,7 @@ export default function ProfileScreen() {
             STORAGE_KEYS.LOGS,
             STORAGE_KEYS.POKEDEX,
             STORAGE_KEYS.BUDDY,
-            STORAGE_KEYS.AVATAR_ID,
+            STORAGE_KEYS.AVATAR_CONFIG,
             STORAGE_KEYS.USERNAME,
             STORAGE_KEYS.TRIPS,
             STORAGE_KEYS.USER_MODE,
@@ -275,8 +277,8 @@ export default function ProfileScreen() {
           setTrips(parsedTrips);
           setPokedex(parsedPokedex);
           if (map[STORAGE_KEYS.BUDDY]) setBuddyId(map[STORAGE_KEYS.BUDDY]);
-          if (map[STORAGE_KEYS.AVATAR_ID])
-            setAvatarId(map[STORAGE_KEYS.AVATAR_ID]!);
+          if (map[STORAGE_KEYS.AVATAR_CONFIG])
+            setAvatarConfig(JSON.parse(map[STORAGE_KEYS.AVATAR_CONFIG]!) as AvatarConfig);
           if (map[STORAGE_KEYS.USERNAME])
             setUsername(map[STORAGE_KEYS.USERNAME]!);
           if (map[STORAGE_KEYS.USER_MODE])
@@ -388,11 +390,10 @@ export default function ProfileScreen() {
     H.success();
     Alert.alert("Nouveau Compagnon !", `${n} voyage maintenant avec toi !`);
   };
-  const saveAvatar = async (id: string) => {
-    setAvatarId(id);
-    setShowAvatarSelector(false);
-    await AsyncStorage.setItem(STORAGE_KEYS.AVATAR_ID, id);
-    H.tapLight();
+  const saveAvatarConfig = async (config: AvatarConfig) => {
+    setAvatarConfig(config);
+    setShowAvatarBuilder(false);
+    await AsyncStorage.setItem(STORAGE_KEYS.AVATAR_CONFIG, JSON.stringify(config));
   };
   const saveName = async () => {
     if (!editName.trim()) return;
@@ -410,7 +411,15 @@ export default function ProfileScreen() {
   };
 
   const buddyAnimal = buddyId ? pokedex.find((a) => a.name === buddyId) : null;
-  const avatar = getAvatarById(avatarId);
+
+  // IDs des badges débloqués — utilisés pour les locks d'avatar
+  const unlockedBadgeIds = useMemo(
+    () =>
+      badgesWithProgress
+        .filter((b) => b.unlocked)
+        .map((b) => b.id),
+    [badgesWithProgress],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -437,10 +446,10 @@ export default function ProfileScreen() {
         <View style={styles.headerCard}>
           <TouchableOpacity
             style={styles.avatarContainer}
-            onPress={() => setShowAvatarSelector(true)}
+            onPress={() => setShowAvatarBuilder(true)}
           >
-            <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-              <Text style={{ fontSize: 38 }}>{avatar.emoji}</Text>
+            <View style={styles.avatar}>
+              <AvatarDisplay config={avatarConfig} size={86} />
             </View>
             <View style={styles.editIconBadge}>
               <Text style={{ fontSize: 10 }}>✏️</Text>
@@ -669,40 +678,16 @@ export default function ProfileScreen() {
 
         {/* ================= MODALS ================= */}
 
-        {/* AVATAR */}
-        <Modal visible={showAvatarSelector} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Choisis ton avatar</Text>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={{ maxHeight: 400 }}
-              >
-                <View style={styles.avatarGrid}>
-                  {AVATAR_PRESETS.map((a) => (
-                    <TouchableOpacity
-                      key={a.id}
-                      style={[
-                        styles.avatarOption,
-                        { backgroundColor: a.bg },
-                        avatarId === a.id && styles.avatarSelected,
-                      ]}
-                      onPress={() => saveAvatar(a.id)}
-                    >
-                      <Text style={{ fontSize: 28 }}>{a.emoji}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowAvatarSelector(false)}
-              >
-                <Text style={styles.closeButtonText}>Fermer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        {/* AVATAR BUILDER */}
+        <AvatarBuilder
+          visible={showAvatarBuilder}
+          initialConfig={avatarConfig}
+          userXp={userXp}
+          tripCount={trips.length}
+          unlockedBadgeIds={unlockedBadgeIds}
+          onSave={saveAvatarConfig}
+          onClose={() => setShowAvatarBuilder(false)}
+        />
 
         {/* PSEUDO */}
         <Modal visible={showNameEditor} animationType="fade" transparent>
@@ -973,6 +958,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#fff",
     elevation: 5,
+    backgroundColor: "#e3f2fd",
+    overflow: "hidden",
   },
   editIconBadge: {
     position: "absolute",
@@ -1219,24 +1206,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
   },
-
-  avatarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 12,
-  },
-  avatarOption: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 3,
-    borderWidth: 3,
-    borderColor: "transparent",
-  },
-  avatarSelected: { borderColor: "#006994" },
 
   buddyList: {
     flexDirection: "row",
