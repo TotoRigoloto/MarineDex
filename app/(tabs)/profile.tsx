@@ -231,6 +231,7 @@ export default function ProfileScreen() {
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [userMode, setUserMode] = useState<UserMode>("regular");
   const [showModeSelector, setShowModeSelector] = useState(false);
+  const [savaisthonDates, setSavaisthonDates] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -244,6 +245,7 @@ export default function ProfileScreen() {
             STORAGE_KEYS.USERNAME,
             STORAGE_KEYS.TRIPS,
             STORAGE_KEYS.USER_MODE,
+            STORAGE_KEYS.SAVAISTHON_DATES,
           ]);
           const map = Object.fromEntries(stored) as Record<
             string,
@@ -279,6 +281,8 @@ export default function ProfileScreen() {
             setUsername(map[STORAGE_KEYS.USERNAME]!);
           if (map[STORAGE_KEYS.USER_MODE])
             setUserMode(map[STORAGE_KEYS.USER_MODE]! as UserMode);
+          if (map[STORAGE_KEYS.SAVAISTHON_DATES])
+            setSavaisthonDates(JSON.parse(map[STORAGE_KEYS.SAVAISTHON_DATES]!));
 
           calculateXp(parsedPokedex, parsedLogs, parsedTrips);
         } catch (e) {
@@ -347,8 +351,8 @@ export default function ProfileScreen() {
 
   // ===== Streak + objectifs (adaptés au mode utilisateur) =====
   const streak = useMemo(
-    () => computeStreak(logs, userMode, trips),
-    [logs, userMode, trips],
+    () => computeStreak(logs, userMode, trips, savaisthonDates),
+    [logs, userMode, trips, savaisthonDates],
   );
   const goalSections = useMemo<GoalSection[]>(
     () => computeGoals(logs, pokedex, trips, userMode),

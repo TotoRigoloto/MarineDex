@@ -12,13 +12,15 @@ import {
   Observation,
   Trip,
 } from "@/constants/MarineData";
+import { getDailyFact, FunFact, todayKey } from "@/constants/FunFacts";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import * as H from "@/services/haptics";
 import { supabase } from "@/services/supabase";
 import { generateUUID } from "@/services/uuid";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -44,6 +46,26 @@ interface Prediction {
 export default function HomeScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Savais-thon
+  const [dailyFact] = useState<FunFact>(getDailyFact());
+  const [savaisthonDone, setSavaisthonDone] = useState(false);
+
+  // Charge l'état du savais-thon du jour depuis AsyncStorage
+  useFocusEffect(
+    useCallback(() => {
+      const checkSavaisthon = async () => {
+        try {
+          const raw = await AsyncStorage.getItem(STORAGE_KEYS.SAVAISTHON_DATES);
+          const dates: string[] = raw ? JSON.parse(raw) : [];
+          setSavaisthonDone(dates.includes(todayKey()));
+        } catch {
+          // silencieux
+        }
+      };
+      checkSavaisthon();
+    }, []),
+  );
 
   // Modal validation
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -242,6 +264,27 @@ export default function HomeScreen() {
     }
   };
 
+  // ============== SAVAIS-THON ==============
+  const validateSavaisthon = async () => {
+    if (savaisthonDone) return;
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.SAVAISTHON_DATES);
+      const dates: string[] = raw ? JSON.parse(raw) : [];
+      const today = todayKey();
+      if (!dates.includes(today)) {
+        dates.push(today);
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.SAVAISTHON_DATES,
+          JSON.stringify(dates),
+        );
+      }
+      setSavaisthonDone(true);
+      H.success();
+    } catch {
+      H.error();
+    }
+  };
+
   // ============== UI ==============
   return (
     <SafeAreaView style={styles.container}>
@@ -286,6 +329,38 @@ export default function HomeScreen() {
           <Text style={styles.tipTxt}>• Cadre bien l&apos;animal au centre</Text>
           <Text style={styles.tipTxt}>• Préfère la lumière naturelle</Text>
           <Text style={styles.tipTxt}>• Évite les reflets sur l&apos;eau</Text>
+        </View>
+
+        {/* ===== SAVAIS-THON DU JOUR ===== */}
+        <View
+          style={[
+            styles.savaisthonCard,
+            savaisthonDone && styles.savaisthonCardDone,
+          ]}
+        >
+          <View style={styles.savaisthonHeader}>
+            <Text style={styles.savaisthonTitle}>🐟 Le savais-thon du jour</Text>
+            {savaisthonDone && (
+              <View style={styles.savaisthonBadge}>
+                <Text style={styles.savaisthonBadgeTxt}>✓ Lu !</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.savaisthonEmoji}>{dailyFact.emoji}</Text>
+          <Text style={styles.savaisthonFact}>{dailyFact.fact}</Text>
+          {!savaisthonDone ? (
+            <TouchableOpacity
+              style={styles.savaisthonBtn}
+              onPress={validateSavaisthon}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.savaisthonBtnTxt}>🧠 J'ai appris !</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.savaisthonDoneHint}>
+              Reviens demain pour un nouveau fait 🌊
+            </Text>
+          )}
         </View>
 
         {__DEV__ && (
@@ -479,6 +554,67 @@ const styles = StyleSheet.create({
   tipTitle: { fontWeight: "bold", color: "#006994", marginBottom: 4 },
   tipTxt: { color: "#555", fontSize: 13, lineHeight: 20 },
   devNote: { marginTop: 20, fontSize: 10, color: "#bbb", fontStyle: "italic" },
+
+  // Savais-thon
+  savaisthonCard: {
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#0288D1",
+    width: "85%",
+    elevation: 3,
+  },
+  savaisthonCardDone: {
+    borderLeftColor: "#43A047",
+    backgroundColor: "#f1f8f2",
+  },
+  savaisthonHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  savaisthonTitle: {
+    fontWeight: "bold",
+    color: "#006994",
+    fontSize: 14,
+  },
+  savaisthonBadge: {
+    backgroundColor: "#43A047",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  savaisthonBadgeTxt: { color: "white", fontSize: 11, fontWeight: "bold" },
+  savaisthonEmoji: {
+    fontSize: 36,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  savaisthonFact: {
+    color: "#333",
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  savaisthonBtn: {
+    backgroundColor: "#006994",
+    borderRadius: 20,
+    paddingVertical: 10,
+    alignItems: "center",
+    elevation: 2,
+  },
+  savaisthonBtnTxt: { color: "white", fontWeight: "bold", fontSize: 14 },
+  savaisthonDoneHint: {
+    textAlign: "center",
+    color: "#43A047",
+    fontStyle: "italic",
+    fontSize: 13,
+  },
 
   modalOverlay: {
     flex: 1,

@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
 
   // Gamification
   USER_MODE: "user_mode", // 'city' | 'coastal' | 'regular'
+  SAVAISTHON_DATES: "savaisthon_dates", // string[] de dates YYYY-MM-DD validées
 
   // Flags
   ONBOARDING_DONE: "onboarding_done",

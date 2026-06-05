@@ -63,6 +63,14 @@ export function quarterKey(d: Date): string {
   return `${d.getFullYear()}-Q${q}`;
 }
 
+/** Parse "YYYY-MM-DD" → Date. Retourne null si invalide. */
+export function parseIso(s: string): Date | null {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // ---- Stats principales ----
 
 export interface StreakInfo {
@@ -79,15 +87,18 @@ export interface StreakInfo {
 /**
  * Calcule la streak en fonction du mode utilisateur.
  *
- * - regular : semaines consécutives avec au moins une observation (ancien comportement)
- * - coastal  : mois consécutifs avec au moins une observation
+ * - regular : semaines consécutives avec au moins une observation ou un savais-thon validé
+ * - coastal  : mois consécutifs avec au moins une observation ou un savais-thon validé
  * - city     : nombre de voyages distincts avec au moins une observation
- *              (pas de notion de rupture — la streak ne peut qu'augmenter)
+ *              (le savais-thon ne compte pas pour ce mode — seuls les voyages comptent)
+ *
+ * @param savaisthonDates - Dates YYYY-MM-DD où l'utilisateur a validé le savais-thon
  */
 export function computeStreak(
   observations: Observation[],
   mode: UserMode = "regular",
   _trips?: Trip[],
+  savaisthonDates?: string[],
 ): StreakInfo {
   if (observations.length === 0) {
     return {
@@ -114,9 +125,9 @@ export function computeStreak(
     return computeStreakCity(observations, mostRecentStr);
   }
   if (mode === "coastal") {
-    return computeStreakCoastal(observations, mostRecentStr);
+    return computeStreakCoastal(observations, mostRecentStr, savaisthonDates);
   }
-  return computeStreakRegular(observations, mostRecentStr);
+  return computeStreakRegular(observations, mostRecentStr, savaisthonDates);
 }
 
 /** Unité d'affichage selon le mode. */
@@ -151,15 +162,23 @@ function computeStreakCity(
   };
 }
 
-/** Mode coastal : mois consécutifs avec au moins une observation. */
+/** Mode coastal : mois consécutifs avec au moins une observation ou un savais-thon validé. */
 function computeStreakCoastal(
   observations: Observation[],
   lastObs: string | null,
+  savaisthonDates?: string[],
 ): StreakInfo {
   const months = new Set<string>();
   for (const o of observations) {
     const d = parseDmy(o.date);
     if (d) months.add(monthKey(d));
+  }
+  // Les jours de savais-thon validé comptent aussi pour le mois
+  if (savaisthonDates) {
+    for (const s of savaisthonDates) {
+      const d = parseIso(s);
+      if (d) months.add(monthKey(d));
+    }
   }
 
   const thisMonth = monthKey(new Date());
@@ -178,15 +197,23 @@ function computeStreakCoastal(
   return { count, unit: "mois", lastObservation: lastObs, activeThisPeriod };
 }
 
-/** Mode regular : semaines consécutives avec au moins une observation (ancien comportement). */
+/** Mode regular : semaines consécutives avec au moins une observation ou un savais-thon validé. */
 function computeStreakRegular(
   observations: Observation[],
   lastObs: string | null,
+  savaisthonDates?: string[],
 ): StreakInfo {
   const weeks = new Set<string>();
   for (const o of observations) {
     const d = parseDmy(o.date);
     if (d) weeks.add(isoWeekKey(d));
+  }
+  // Les jours de savais-thon validé comptent aussi pour la semaine
+  if (savaisthonDates) {
+    for (const s of savaisthonDates) {
+      const d = parseIso(s);
+      if (d) weeks.add(isoWeekKey(d));
+    }
   }
 
   const thisWeek = isoWeekKey(new Date());
