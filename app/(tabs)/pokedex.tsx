@@ -11,16 +11,15 @@ import {
   OCEAN_NAMES,
 } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
+import SpeciesImage from "@/components/species-image";
 import * as H from "@/services/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image as ExpoImage } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   FlatList,
-  Image,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -224,9 +223,9 @@ export default function PokedexScreen() {
         activeOpacity={0.85}
       >
         <View style={styles.imageContainer}>
-          {/* Silhouette sombre pour les non-découverts, image normale sinon */}
-          <ExpoImage
-            source={item.image}
+          <SpeciesImage
+            name={item.name}
+            localImage={item.image}
             style={[styles.image, !item.discovered && styles.imageLocked]}
             contentFit="contain"
           />
@@ -514,10 +513,11 @@ export default function PokedexScreen() {
             >
               <Text style={styles.closeZoomText}>✕ Retour</Text>
             </TouchableOpacity>
-            <Image
-              source={selectedAnimal.image}
+            <SpeciesImage
+              name={selectedAnimal.name}
+              localImage={selectedAnimal.image}
               style={{ width: "100%", height: "80%" }}
-              resizeMode="contain"
+              contentFit="contain"
             />
             <Text style={styles.zoomName}>{selectedAnimal.name}</Text>
           </SafeAreaView>
@@ -540,10 +540,11 @@ export default function PokedexScreen() {
 
               <ScrollView showsVerticalScrollIndicator={false}>
                 <TouchableOpacity onPress={() => setIsZooming(true)}>
-                  <Image
-                    source={selectedAnimal.image}
+                  <SpeciesImage
+                    name={selectedAnimal.name}
+                    localImage={selectedAnimal.image}
                     style={styles.modalImage}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                   <Text style={styles.zoomHint}>(Toucher pour agrandir)</Text>
                 </TouchableOpacity>
