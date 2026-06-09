@@ -3,9 +3,9 @@
 // Gère le téléchargement + cache en arrière-plan de manière transparente.
 
 import { cacheImage, getCachedImage, getRemoteUrl, toSpeciesKey } from "@/services/image-cache";
-import { Image as ExpoImage, ImageSource, ImageStyle } from "expo-image";
+import { Image as ExpoImage, ImageSource } from "expo-image";
 import React, { useEffect, useState } from "react";
-import { StyleProp } from "react-native";
+import { ImageStyle, StyleProp } from "react-native";
 
 interface SpeciesImageProps {
   /** Nom de l'espèce (ex: "Requin Baleine") */
