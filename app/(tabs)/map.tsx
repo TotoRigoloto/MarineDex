@@ -20,6 +20,7 @@ import * as Location from "expo-location";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Easing,
   Image,
@@ -252,10 +253,37 @@ export default function MapScreen() {
     mapRef.current?.animateToRegion(r, 500);
   };
 
+  // Centre la carte sur la position de l'utilisateur, avec pré-prompt explicatif
   const goToMyLocation = async () => {
     try {
+      const { status: existing } = await Location.getForegroundPermissionsAsync();
+
+      // Si jamais demandé, on affiche un pré-prompt convivial avant le dialogue système
+      if (existing === "undetermined") {
+        await new Promise<void>((resolve) =>
+          Alert.alert(
+            "📍 Localise tes observations",
+            "Pour centrer la carte sur ta position et te montrer les observations et aires marines protégées autour de toi, MarineDex a besoin d'accéder à ta localisation.\n\nTa position n'est jamais partagée ni stockée sur nos serveurs.",
+            [
+              { text: "Pas maintenant", style: "cancel", onPress: () => resolve() },
+              { text: "Activer", onPress: () => resolve() },
+            ],
+          ),
+        );
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      if (status !== "granted") {
+        // Permission refusée — on informe gentiment
+        if (existing !== "undetermined") {
+          Alert.alert(
+            "Localisation désactivée",
+            "Tu peux l'activer à tout moment dans les réglages de ton téléphone pour profiter de la carte centrée sur toi.",
+          );
+        }
+        return;
+      }
+
       const loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
