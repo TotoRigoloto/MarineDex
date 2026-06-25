@@ -215,6 +215,22 @@ const BADGES_CONFIG: BadgeDef[] = [
   },
 ];
 
+// --- NIVEAUX DE PLONGÉE ---
+const DIVE_LEVELS: { org: string; levels: string[] }[] = [
+  {
+    org: "PADI",
+    levels: ["Open Water", "Advanced", "Rescue", "Divemaster", "Instructor"],
+  },
+  {
+    org: "FFESSM",
+    levels: ["N1", "N2", "N3", "N4", "Initiateur", "MF1", "MF2"],
+  },
+  {
+    org: "Autre",
+    levels: ["Snorkeling", "Apnée", "SSI", "CMAS", "Autre"],
+  },
+];
+
 export default function ProfileScreen() {
   const [userXp, setUserXp] = useState(0);
   const [logs, setLogs] = useState<Observation[]>([]);
@@ -234,6 +250,8 @@ export default function ProfileScreen() {
   const [userMode, setUserMode] = useState<UserMode>("regular");
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [savaisthonDates, setSavaisthonDates] = useState<string[]>([]);
+  const [diveLevel, setDiveLevel] = useState<string | null>(null);
+  const [showDiveLevelPicker, setShowDiveLevelPicker] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -248,6 +266,7 @@ export default function ProfileScreen() {
             STORAGE_KEYS.TRIPS,
             STORAGE_KEYS.USER_MODE,
             STORAGE_KEYS.SAVAISTHON_DATES,
+            STORAGE_KEYS.DIVE_LEVEL,
           ]);
           const map = Object.fromEntries(stored) as Record<
             string,
@@ -285,6 +304,8 @@ export default function ProfileScreen() {
             setUserMode(map[STORAGE_KEYS.USER_MODE]! as UserMode);
           if (map[STORAGE_KEYS.SAVAISTHON_DATES])
             setSavaisthonDates(JSON.parse(map[STORAGE_KEYS.SAVAISTHON_DATES]!));
+          if (map[STORAGE_KEYS.DIVE_LEVEL])
+            setDiveLevel(map[STORAGE_KEYS.DIVE_LEVEL]);
 
           calculateXp(parsedPokedex, parsedLogs, parsedTrips);
         } catch (e) {
@@ -410,6 +431,13 @@ export default function ProfileScreen() {
     H.tapLight();
   };
 
+  const saveDiveLevel = async (level: string) => {
+    setDiveLevel(level);
+    setShowDiveLevelPicker(false);
+    await AsyncStorage.setItem(STORAGE_KEYS.DIVE_LEVEL, level);
+    H.success();
+  };
+
   const buddyAnimal = buddyId ? pokedex.find((a) => a.name === buddyId) : null;
 
   // IDs des badges débloqués — utilisés pour les locks d'avatar
@@ -523,6 +551,25 @@ export default function ProfileScreen() {
             }
             l="Pays"
           />
+        </View>
+
+        {/* NIVEAU DE PLONGÉE */}
+        <View style={styles.diveLevelRow}>
+          <TouchableOpacity
+            style={styles.diveLevelCard}
+            onPress={() => setShowDiveLevelPicker(true)}
+          >
+            <Text style={{ fontSize: 28 }}>🤿</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.diveLevelLabel}>Niveau de plongée</Text>
+              <Text style={styles.diveLevelValue}>
+                {diveLevel ?? "Non renseigné"}
+              </Text>
+            </View>
+            <Text style={{ color: "#006994", fontSize: 13 }}>
+              {diveLevel ? "Modifier" : "Choisir"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* STREAK + OBJECTIFS */}
@@ -795,6 +842,69 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={[styles.closeButton, { marginTop: 12 }]}
                 onPress={() => setShowModeSelector(false)}
+              >
+                <Text style={styles.closeButtonText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* NIVEAU DE PLONGÉE PICKER */}
+        <Modal visible={showDiveLevelPicker} animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Niveau de plongée</Text>
+              <ScrollView
+                style={{ maxHeight: 380, width: "100%" }}
+                showsVerticalScrollIndicator={false}
+              >
+                {DIVE_LEVELS.map((org) => (
+                  <View key={org.org} style={{ marginBottom: 12 }}>
+                    <Text style={styles.diveLevelOrg}>{org.org}</Text>
+                    {org.levels.map((lvl) => {
+                      const val = `${org.org} — ${lvl}`;
+                      const isActive = diveLevel === val;
+                      return (
+                        <TouchableOpacity
+                          key={lvl}
+                          style={[
+                            styles.diveLevelOption,
+                            isActive && styles.diveLevelOptionActive,
+                          ]}
+                          onPress={() => saveDiveLevel(val)}
+                        >
+                          <Text
+                            style={[
+                              styles.diveLevelOptionTxt,
+                              isActive && { color: "white" },
+                            ]}
+                          >
+                            {lvl}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ))}
+              </ScrollView>
+              {diveLevel && (
+                <TouchableOpacity
+                  style={[styles.closeButton, { backgroundColor: "#fff3cd" }]}
+                  onPress={() => {
+                    setDiveLevel(null);
+                    setShowDiveLevelPicker(false);
+                    AsyncStorage.removeItem(STORAGE_KEYS.DIVE_LEVEL);
+                    H.tapLight();
+                  }}
+                >
+                  <Text style={[styles.closeButtonText, { color: "#856404" }]}>
+                    Retirer le niveau
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDiveLevelPicker(false)}
               >
                 <Text style={styles.closeButtonText}>Fermer</Text>
               </TouchableOpacity>
@@ -1282,4 +1392,40 @@ const styles = StyleSheet.create({
   },
   modeOptionLabel: { fontSize: 15, fontWeight: "bold", color: "#333" },
   modeOptionDesc: { fontSize: 12, color: "#666", marginTop: 3 },
+
+  // Niveau de plongée
+  diveLevelRow: {
+    paddingHorizontal: 16,
+    marginTop: 14,
+  },
+  diveLevelCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 14,
+    borderRadius: 16,
+    elevation: 2,
+  },
+  diveLevelLabel: { fontSize: 11, color: "#666" },
+  diveLevelValue: { fontSize: 15, fontWeight: "bold", color: "#006994", marginTop: 2 },
+  diveLevelOrg: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#006994",
+    marginBottom: 6,
+    paddingLeft: 4,
+  },
+  diveLevelOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    marginBottom: 6,
+  },
+  diveLevelOptionActive: {
+    backgroundColor: "#006994",
+    borderColor: "#006994",
+  },
+  diveLevelOptionTxt: { fontSize: 14, color: "#333", fontWeight: "600" },
 });

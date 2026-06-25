@@ -24,6 +24,9 @@ export const STORAGE_KEYS = {
   // Avatar composable (nouveau système)
   AVATAR_CONFIG: "avatar_config", // JSON AvatarConfig (voir constants/AvatarData.ts)
 
+  // Niveau de plongée
+  DIVE_LEVEL: "user_dive_level", // ex: "PADI - Advanced" ou "FFESSM - N2"
+
   // Flags
   ONBOARDING_DONE: "onboarding_done",
   HAS_ACCOUNT: "has_account",
