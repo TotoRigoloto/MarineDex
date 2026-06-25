@@ -548,6 +548,22 @@ export default function MapScreen() {
               ))}
             </View>
 
+            {/* Bouton redirection pokédex quand une famille est sélectionnée */}
+            {familyFilter && (
+              <TouchableOpacity
+                style={styles.pokedexLink}
+                onPress={() => {
+                  H.tapMedium();
+                  setShowFilters(false);
+                  router.push(`/pokedex?family=${encodeURIComponent(familyFilter)}` as any);
+                }}
+              >
+                <Text style={styles.pokedexLinkTxt}>
+                  📖 Voir les {familyFilter}s dans le Pokédex
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <Text style={styles.filterLabel}>Par voyage</Text>
             <View style={styles.chipRow}>
               <Chip
@@ -838,6 +854,19 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
   chipTxt: { fontSize: 12, color: "#333", fontWeight: "600" },
+  pokedexLink: {
+    backgroundColor: "#e1eef5",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  pokedexLinkTxt: {
+    color: "#006994",
+    fontWeight: "bold",
+    fontSize: 13,
+  },
   filterFooter: { flexDirection: "row", gap: 10, marginTop: 20 },
   filterBtn: {
     flex: 1,
