@@ -513,6 +513,6 @@ export function buildShareText(args: {
     `🧳 ${trips} voyage${trips > 1 ? "s" : ""}`,
   ];
   if (streakLine) lines.push(streakLine);
-  lines.push("", "Rejoins-moi sur MarineDex 🤿");
+  lines.push("", "Découvre MarineDex par @Revosea : https://revosea.com");
   return lines.join("\n");
 }
