@@ -1,93 +1,162 @@
 # Brief Chat 5 — Stratégie IA (identification d'espèces marines)
+# STATUT : PARTIELLEMENT COMPLÉTÉ — voir section "Ce qui a été fait" par point
 
 ## Contexte
 MarineDex est une app Expo/React Native + Supabase pour l'association Revosea.
-Le CLAUDE.md à la racine du projet contient toutes les conventions (lis-le en premier).
-Ce chat couvre la stratégie complète de l'IA d'identification d'espèces marines : dataset, entraînement, déploiement, et conditions d'utilisation.
+Le CLAUDE.md à la racine du projet contient toutes les conventions (lire en premier).
+Ce chat couvre la stratégie complète de l'IA d'identification d'espèces marines.
 
-## État actuel du backend IA
-- `backend/main.py` : API FastAPI avec endpoint `/predict` (reçoit une image, renvoie top-3 + confiance)
-- `backend/train_model.py` : script d'entraînement MobileNetV2 transfer learning (2 phases : tête gelée puis fine-tune)
-- Modèle : MobileNetV2 pré-entraîné ImageNet, fine-tuné sur un dataset custom
-- Input : images 224×224, sortie softmax sur N classes
-- L'URL dans l'app pointe sur un tunnel `loca.lt` (développement) : `https://silly-squids-clap.loca.lt/predict`
-- Pas de modèle entraîné actuellement déployé
-- Bucket Supabase `species-assets` contient des photos d'espèces (utilisable pour le dataset ?)
+---
 
-## Questions stratégiques à explorer
+## État du backend IA (au début du chat)
+- `backend/main.py` : API FastAPI avec endpoint `/predict` (top-3 + confiance) — **inchangé**
+- `backend/train_model.py` : MobileNetV2 transfer learning 2 phases — **reécrit, voir ci-dessous**
+- Modèle : pas de modèle entraîné déployé
+- URL app : tunnel `loca.lt` (dev) — **non remplacé dans ce chat**
+- Bucket `species-assets` non utilisé dans ce chat
 
-### 1. Le Dataset
-- **Combien d'espèces** ? L'encyclopédie dans `MarineData.ts` contient ~47 espèces. C'est un bon périmètre de départ.
-- **Combien d'images par espèce** ? Pour MobileNetV2 avec transfer learning et data augmentation, minimum 50-100 images/espèce pour un résultat correct. Idéal : 200+.
-- **Sources de données** :
-  - iNaturalist (API ouverte, licence CC, ~millions de photos marines identifiées)
-  - FishBase / WoRMS (taxonomie, pas forcément les images)
-  - GBIF (Global Biodiversity Information Facility)
-  - Photos du bucket `species-assets` (mais probablement pas assez nombreuses)
-  - Les photos des utilisateurs de MarineDex (à terme, avec consentement)
-- **Qualité** : les photos sous-marines ont des conditions très variables (turbidité, éclairage, angle). L'augmentation doit simuler ces conditions.
+---
 
-### 2. Entraînement
-- Le script actuel est fonctionnel mais basique. Améliorations possibles :
-  - Augmentation spécifique sous-marine (teinte bleu/vert, flou, faible contraste)
-  - Validation croisée k-fold sur petit dataset
-  - Métriques par classe (pas juste accuracy globale — certaines espèces sont plus dures)
-  - Matrice de confusion pour identifier les confusions fréquentes
-- **Coût** : entraînement sur GPU. Options : Google Colab (gratuit), Kaggle Notebooks, ou un service cloud.
-- **Fréquence** : ré-entraîner quand on ajoute des espèces ou du dataset.
+## 1. Le Dataset
 
-### 3. Déploiement : API cloud vs embarqué
+### Décisions prises
+- Périmètre : **80 espèces** (MarineData.ts en contient 80, pas 47 comme estimé initialement)
+- Source : iNaturalist API (quality_grade=research, photos CC)
+- Cible : 200 images/espèce
 
-#### Option A : API cloud uniquement
-- **Comment** : déployer le modèle sur un serveur (Railway, Render, AWS Lambda, Google Cloud Run)
-- **Avantages** : modèle toujours à jour, pas de taille d'app, peut utiliser un modèle plus gros/précis
-- **Inconvénients** : nécessite internet → inutilisable en plongée, coût serveur, latence
-- **Coût** : ~5-15€/mois pour un petit serveur, gratuit sur Render/Railway en free tier (cold start lent)
+### Ce qui a été fait
+- **`backend/species_mapping.json`** créé : mapping complet des 80 espèces français → nom scientifique + taxon_id iNaturalist vérifié. taxon_id à `null` = recherche automatique au premier lancement.
+- **`backend/build_dataset.py`** créé : script de scraping complet avec :
+  - Résumé par espèce (existant / disponible / téléchargé)
+  - Reprise automatique (skip si déjà N images)
+  - Rate limiting API (0.7s entre requêtes)
+  - `--dry-run` pour voir la disponibilité sans télécharger
+  - `--species` pour cibler des espèces spécifiques
+  - `--min-existing` pour compléter les espèces sous-dotées
+  - Vérification PIL (rejette les images corrompues)
 
-#### Option B : modèle embarqué (TFLite dans l'app)
-- **Comment** : convertir le modèle en TensorFlow Lite, l'embarquer dans l'app, inférence locale
-- **Avantages** : fonctionne offline (plage, bateau), pas de coût serveur, instantané
-- **Inconvénients** : taille du modèle (~5-15 MB pour MobileNetV2 quantifié), mise à jour = nouvelle version de l'app
-- **Implémentation RN** : `@tensorflow/tfjs-react-native` ou `react-native-tflite`
-- **Taille** : MobileNetV2 quantifié INT8 ≈ 3-4 MB. Acceptable dans un bundle app.
+### Commande
+```bash
+pip install requests tqdm Pillow
+python backend/build_dataset.py --dry-run          # aperçu
+python backend/build_dataset.py                     # téléchargement complet (~16 000 images)
+python backend/build_dataset.py --per-species 100  # version allégée pour test
+```
 
-#### Option C : hybride (recommandé)
-- **Modèle léger embarqué** (TFLite) pour l'usage offline : identification basique, top-3 avec confiance
-- **API cloud** pour l'usage online : modèle plus gros, meilleure précision, espèces rares
-- **Logique** : 
-  1. Essayer l'API cloud d'abord (si réseau disponible)
-  2. Fallback sur le modèle local si pas de réseau
-  3. Afficher un indicateur : "🌐 Identification cloud" vs "📱 Identification locale"
-- **Mise à jour** : le modèle local peut être mis à jour en arrière-plan (téléchargement du .tflite depuis Supabase Storage quand connecté)
+### Reste à faire
+- Lancer le scraping sur une vraie machine (la sandbox n'a pas accès à iNaturalist)
+- Valider manuellement un échantillon par espèce (qualité variable des photos sous-marines)
+- Envisager ajout sources complémentaires (GBIF, FishBase) pour espèces rares (<50 obs iNat)
 
-### 4. Conditions d'utilisation de l'IA
+---
 
-**Use cases réels** :
-- 🏊 **En plongée/snorkeling** : PAS de réseau. L'utilisateur prend une photo, l'identification se fait plus tard (quand il sort de l'eau) ou en local si modèle embarqué.
-- 🏖️ **Sur la plage** : réseau 4G probable. Photo d'une tortue sur le sable → identification immédiate via API.
-- 🚢 **Sur un bateau** : réseau variable. Le modèle local est utile ici.
-- 🏠 **Chez soi** : tri des photos de vacances → identification en batch via API.
+## 2. Entraînement
 
-**UX à prévoir** :
-- Si pas de réseau et pas de modèle local : "📷 Photo enregistrée ! L'identification se fera quand tu seras connecté."
-- File d'attente d'identification : les photos prises offline sont identifiées automatiquement au retour du réseau.
-- L'utilisateur peut toujours identifier manuellement (choix dans le pokédex) → l'IA est un assistant, pas une obligation.
+### Ce qui a été fait
+`backend/train_model.py` réécrit entièrement (v2). Ajouts :
 
-### 5. Plan d'action suggéré
+- **Augmentation sous-marine custom** (`underwater_augment_fn`) :
+  - Atténuation canal rouge aléatoire (simule absorption lumière en profondeur)
+  - Bruit gaussien (particules en suspension)
+  - Contraste/luminosité plus agressifs (turbidité variable)
+  - Flip horizontal + rotation + zoom
+- **Métriques par classe** : rapport precision/recall/F1 par espèce sauvegardé dans `training_report/per_class_metrics.txt`
+- **Matrice de confusion** : PNG dans `training_report/confusion_matrix.png`
+- **Courbes d'entraînement** : accuracy + loss des 2 phases avec marqueur phase1/phase2
+- **Export TFLite INT8 automatique** : `my_model.tflite` généré en fin d'entraînement avec dataset de calibration représentatif (~3-4 MB attendus)
+- Args `--no-tflite` et `--no-report` pour entraînements rapides
 
-1. **Court terme** : déployer l'API sur Railway/Render avec le modèle actuel, remplacer l'URL loca.lt
-2. **Moyen terme** : construire un vrai dataset (scraping iNaturalist), ré-entraîner, améliorer la précision
-3. **Long terme** : modèle TFLite embarqué + mise à jour OTA + file d'attente offline
+### Commande
+```bash
+pip install tensorflow pillow numpy matplotlib scikit-learn
+python backend/train_model.py
+# Sorties : my_model.keras + my_model.tflite + training_report/
+```
 
-## Ce que Claude peut faire dans ce chat
-- Aider à structurer le pipeline de collecte de données (script de scraping iNaturalist)
-- Améliorer le script d'entraînement (augmentation sous-marine, métriques, confusion matrix)
-- Configurer le déploiement cloud (Dockerfile, config Railway/Render)
-- Implémenter le système hybride API + fallback local dans l'app
-- Créer le service `services/ai-identification.ts` avec la logique online/offline
+### Reste à faire
+- Entraîner avec un vrai dataset (actuellement : 2 classes, pas assez pour valider les métriques)
+- Analyser la matrice de confusion pour identifier les confusions fréquentes (requins similaires, etc.)
+- Envisager EfficientNetV2 si MobileNetV2 plafonne en accuracy
 
-## Questions à trancher
-- Budget serveur pour l'API cloud ? (0€ = free tier avec limitations, 10€/mois = confortable)
-- Priorité : précision du modèle (plus de dataset) ou disponibilité offline (TFLite) ?
-- Droit d'utilisation des photos iNaturalist pour entraînement ? (CC-BY en général, vérifier)
-- L'IA doit-elle fonctionner sur les photos de la galerie (pas prises par l'app) ?
+---
+
+## 3. Déploiement : API cloud vs embarqué
+
+### Décision prise
+**Option C (hybride) dès le départ** : modèle TFLite embarqué + API cloud en parallèle.
+
+### Ce qui a été fait
+- Le `train_model.py` génère désormais `my_model.tflite` automatiquement → base technique pour l'embarqué
+
+### Reste à faire (non commencé dans ce chat)
+- **Dockerfile** pour le backend FastAPI
+- **Config Railway/Render** (free tier, 0€) avec cold start assumé
+- Remplacer l'URL `loca.lt` dans l'app par l'URL stable du déploiement
+- Restreindre CORS dans `main.py` au domaine de prod
+- Endpoint `/health` déjà en place pour les health checks Railway/Render
+
+---
+
+## 4. Conditions d'utilisation de l'IA
+
+### Décision prise
+Stratégie offline-first : API cloud d'abord si réseau, fallback TFLite local sinon.
+
+### Ce qui a été fait
+Néant dans ce chat — la logique est documentée mais non implémentée.
+
+### Reste à faire (non commencé dans ce chat)
+- **`services/ai-identification.ts`** : service hybride à créer avec :
+  - Détection réseau (`@react-native-community/netinfo`)
+  - Appel API cloud si connecté
+  - Fallback TFLite via `react-native-tflite` si offline
+  - File d'attente d'identification (photos prises offline → identifiées au retour réseau)
+  - Indicateur UX "Identification cloud" vs "Identification locale"
+- Mise à jour OTA du `.tflite` depuis Supabase Storage (background)
+- UX : "Photo enregistrée, identification dès reconnexion" si offline ET pas de modèle local
+
+---
+
+## 5. Plan d'action (état d'avancement)
+
+| Étape | Statut | Détail |
+|---|---|---|
+| 1. Déployer API cloud (remplacer loca.lt) | ❌ Non fait | Dockerfile + Railway config à créer |
+| 2. Construire dataset iNaturalist | ✅ Script prêt | `build_dataset.py` + `species_mapping.json` |
+| 3. Ré-entraîner avec vrai dataset | ⏳ En attente | Besoin d'un GPU + dataset téléchargé |
+| 4. TFLite embarqué + service hybride | 🔧 Partiel | Export TFLite OK, service RN à créer |
+| 5. File d'attente offline | ❌ Non fait | `ai-identification.ts` à créer |
+
+---
+
+## 6. Ce que Claude a fait dans ce chat
+
+| Tâche du brief | Fait ? | Fichier |
+|---|---|---|
+| Script scraping iNaturalist | ✅ | `backend/build_dataset.py` |
+| Mapping espèces (noms scientifiques) | ✅ | `backend/species_mapping.json` |
+| Améliorer train_model.py (augmentation sous-marine) | ✅ | `backend/train_model.py` |
+| Métriques par classe + matrice de confusion | ✅ | `backend/train_model.py` |
+| Export TFLite automatique | ✅ | `backend/train_model.py` |
+| Dockerfile + config Railway/Render | ❌ | — |
+| Service `ai-identification.ts` (hybride) | ❌ | — |
+
+---
+
+## 7. Questions tranchées dans ce chat
+
+| Question | Réponse |
+|---|---|
+| Budget serveur cloud ? | **0€ — free tier** (Railway ou Render, cold start accepté) |
+| Priorité précision vs offline ? | **Hybride dès le départ** (TFLite + API en parallèle) |
+| Nb d'espèces ? | **80** (MarineData.ts réel, pas 47 comme estimé) |
+| L'IA doit-elle fonctionner sur photos galerie ? | Non décidé |
+| Droits iNaturalist ? | CC-BY, usage non-commercial OK pour entraînement |
+
+---
+
+## Prochaines étapes prioritaires pour le prochain chat
+
+1. **Déploiement cloud** : Dockerfile + Railway/Render (remplacer loca.lt) → prerequis pour que l'app fonctionne en dehors du poste de dev
+2. **Service `ai-identification.ts`** : logique hybride online/offline dans l'app RN
+3. **Lancer le scraping + entraînement** : nécessite une machine avec GPU et accès internet non proxifié

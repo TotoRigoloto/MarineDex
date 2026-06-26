@@ -1,108 +1,127 @@
-# Brief Chat 4 — Gamification adaptative + avatars composables
+# Bilan Chat 4 — Gamification adaptative + avatars composables
 
-## Contexte
-MarineDex est une app Expo/React Native + Supabase pour l'association Revosea.
-Le CLAUDE.md à la racine du projet contient toutes les conventions (lis-le en premier).
-Ce chat couvre la refonte du système de gamification et la création d'avatars personnalisables.
+> Document de handoff pour le prochain chat. Lis `CLAUDE.md` à la racine en premier — il contient toutes les conventions (stack, structure, règles de code).
 
-## État actuel
-- `app/(tabs)/profile.tsx` : streaks (semaines consécutives), objectifs hebdo/mensuels, badges, XP/grades
-- `services/stats.ts` : `computeStreak()` (semaines consécutives avec obs), `weeklyGoals()`, `monthlyGoals()`
-- `constants/Storage.ts` : avatars = presets emoji + couleur de fond (12 presets)
-- Le streak actuel = "nombre de semaines consécutives avec au moins une observation"
+---
 
-## Problèmes identifiés
-1. **Streaks trop exigeants** : tout le monde ne plonge pas chaque semaine. Un citadin qui va à la mer 2x/an perd son streak en permanence → frustrant, pas motivant.
-2. **Objectifs uniformes** : les goals hebdo/mensuels sont les mêmes pour un plongeur pro et un touriste occasionnel.
-3. **Risque d'incitation au tourisme de masse** : pousser les gens à plonger plus souvent va à l'encontre de la mission écolo de Revosea.
-4. **Avatars basiques** : juste un emoji + couleur, pas de personnalisation réelle.
+## Fichiers touchés en Chat 4
 
-## Tâches à réaliser
+| Fichier | Statut | Résumé |
+|---|---|---|
+| `services/stats.ts` | ✏️ Refonte | Modes adaptatifs, streak multi-mode, objectifs par section |
+| `constants/FunFacts.ts` | 🆕 Créé | 100 fun facts, `getDailyFact()`, `todayKey()` |
+| `constants/AvatarData.ts` | 🆕 Créé | Types, options, conditions de lock, `isUnlocked()` |
+| `components/avatar-display.tsx` | 🆕 Créé | Rendu SVG 7 calques |
+| `components/avatar-builder.tsx` | 🆕 Créé | Éditeur plein écran 5 onglets, preview live |
+| `constants/Storage.ts` | ✏️ Modifié | +`USER_MODE`, +`SAVAISTHON_DATES`, +`AVATAR_CONFIG` |
+| `app/(tabs)/index.tsx` | ✏️ Modifié | Carte "Le savais-thon" |
+| `app/(tabs)/profile.tsx` | ✏️ Modifié | Avatar SVG, chip mode, streak adaptée, goal sections |
+| `app/login.tsx` | ✏️ Modifié | Step "mode" dans l'onboarding |
+| `package.json` | ✏️ Modifié | `react-native-svg` déclaré explicitement |
 
-### 1. Modes utilisateur adaptatifs
-**Concept** : l'utilisateur choisit son "rythme marin" à l'onboarding (modifiable dans settings).
+---
 
-Modes proposés :
-- 🏙️ **Citadin voyageur** — "Je vais à la mer quelques fois par an"
-  - Streak basé sur les voyages (pas les semaines)
-  - Objectifs trimestriels plutôt qu'hebdo
-  - Badges orientés découverte/diversité
-- 🏖️ **Côtier occasionnel** — "J'habite près de la mer, j'y vais de temps en temps"
-  - Streak mensuel (1 obs/mois suffit)
-  - Objectifs mensuels modérés
-  - Mix badges quantité + diversité
-- 🌊 **Marin régulier** — "Je plonge/snorkele souvent"
-  - Streak hebdomadaire (le système actuel)
-  - Objectifs hebdo + mensuels
-  - Badges avancés, défis de quantité
+## Tâche 1 — Modes utilisateur adaptatifs ✅
 
-**Alternative évolutive** (plus ambitieuse mais meilleure UX) :
-- Pas de choix explicite : l'app détecte le rythme de l'utilisateur sur ses 3 premiers mois
-- Commence avec le mode "Citadin" (le plus doux)
-- Si elle détecte des plongées régulières → propose de passer au mode suivant
-- "On dirait que tu es un vrai marin ! Veux-tu des objectifs plus ambitieux ?"
+**Brief** : 3 modes (citadin / côtier / régulier) avec streak et objectifs adaptés. Choix explicite recommandé, auto-détection en v2.
 
-**Recommandation** : commencer par le choix explicite (plus simple), prévoir l'évolutif en v2.
+**Ce qui a été fait :**
+- `UserMode = "city" | "coastal" | "regular"` dans `services/stats.ts` avec `USER_MODE_LABELS` et `USER_MODE_DESCRIPTIONS`
+- `computeStreak()` refondu : city = voyages cumulés (non consécutifs), coastal = mois consécutifs, regular = semaines consécutives (comportement original préservé → rétro-compatible, défaut "regular" si clé absente)
+- `computeGoals()` → `GoalSection[]` : city = trimestriel, coastal = mensuel, regular = hebdo + mensuel
+- Mode stocké dans `STORAGE_KEYS.USER_MODE`
+- Chip cliquable dans le header du profil → modal de sélection
+- Step "mode" ajoutée dans `app/login.tsx` : apparaît après signup (avec session) et après "continueOffline", pas après signin (l'utilisateur existant garde son mode stocké)
 
-Stocker le mode dans `STORAGE_KEYS.USER_MODE` et adapter `computeStreak()` + `weeklyGoals()` + `monthlyGoals()` dans `services/stats.ts`.
+**Non fait (intentionnel) :** détection automatique du rythme sur 3 mois — reportée en v2.
 
-### 2. Streaks via "Le savais-thon" 🐟
-**Concept** : maintenir son streak sans forcément aller dans l'eau, en apprenant sur la vie marine.
+---
 
-- Chaque jour, une carte "Le savais-thon" (fun fact marin) est disponible
-- Lire/valider le savais-thon du jour compte comme activité pour le streak (selon le mode)
-- Source des fun facts : ajouter un tableau `FUN_FACTS` dans `MarineData.ts` ou un fichier dédié `constants/FunFacts.ts`
-- Afficher sur l'écran d'accueil (index.tsx) ou dans une section dédiée du profil
-- Un fact par jour (basé sur la date, pas aléatoire → tout le monde voit le même)
-- Bouton "J'ai appris !" qui valide le fact et nourrit le streak
+## Tâche 2 — Le savais-thon 🐟 ✅
 
-### 3. Avatars composables (style Pokémon GO)
-**Concept** : un avatar personnalisable par calques SVG superposés.
+**Brief** : fun fact marin quotidien, déterministe (même fact pour tous), compte pour le streak, 100 facts au lancement.
 
-**Architecture recommandée** :
-- Système de calques SVG (de bas en haut) :
-  1. Corps (couleur de peau : 6-8 teintes)
-  2. Cheveux (style + couleur : 10 styles × 6 couleurs)
-  3. Visage (yeux + expression : 5-6 options)
-  4. Tenue (maillot, combi shorty, combi intégrale, rashguard : 8-10 options × couleurs)
-  5. Accessoires (masque, tuba, palmes, casquette, chapeau : 6-8 options)
-- Chaque calque = un fichier SVG ou un composant React Native SVG
-- La combinaison est stockée comme un objet JSON dans AsyncStorage
+**Ce qui a été fait :**
+- `constants/FunFacts.ts` : 100 faits marins en français, `getDailyFact()` = `FUN_FACTS[dayOfYear % 100]`, `todayKey()` → `YYYY-MM-DD`
+- `STORAGE_KEYS.SAVAISTHON_DATES` : `string[]` des dates validées
+- Carte interactive dans `app/(tabs)/index.tsx` : emoji + texte + bouton "J'ai appris !", bordure bleue → verte après validation, `H.success()` au clic
+- `savaisthonDates` passé à `computeStreak()` comme 4e paramètre : compte pour coastal (mois) et regular (semaines), **ignoré pour city** (dont la streak est voyage-based)
 
-**Implémentation** :
-- Dépendance : `react-native-svg` (probablement déjà installé, vérifier)
-- Créer `components/avatar-builder.tsx` : l'éditeur avec carrousel par catégorie
-- Créer `components/avatar-display.tsx` : le rendu composé (utilisé partout : profil, partage, badges)
-- Stocker dans `STORAGE_KEYS.AVATAR_CONFIG` : `{ skin: "tone3", hair: "short_brown", face: "happy", outfit: "wetsuit_blue", accessory: "mask" }`
-- Garder les anciens `AVATAR_PRESETS` comme fallback / migration
+---
 
-**Comment faire les SVG** :
-- Option A : les dessiner à la main (Figma → export SVG → composants). Contrôle total, cohérence visuelle.
-- Option B : utiliser une lib comme `react-native-avatar-builder` (si elle existe et est maintenue).
-- **Recommandation** : Option A avec des SVG simples style flat/cartoon. Je peux générer les paths SVG de base, mais il faudra un passage Figma pour le polish.
-- Les SVG peuvent être générés comme composants React avec des props pour les couleurs.
+## Tâche 3 — Avatars composables ✅
 
-**Ce que Claude peut faire** :
-- Créer l'architecture complète (composants, types, storage)
-- Générer des SVG basiques fonctionnels (silhouettes simples)
-- Implémenter l'éditeur d'avatar avec prévisualisation
-- Pour un rendu "beau", il faudra ensuite remplacer les SVG par des assets dessinés par un graphiste ou via Figma
+**Brief** : système de calques SVG style Pokémon GO, éditeur par catégorie, stockage JSON, `react-native-svg`.
 
-### 4. Déblocage d'items d'avatar par badges/XP
-- Certains accessoires sont débloqués par la progression :
-  - Masque de plongée → badge "Première Bulle"
-  - Combi intégrale → grade "Dive Master"
-  - Casquette Revosea → 5 voyages
-- Afficher un cadenas sur les items non débloqués dans l'éditeur
+**Ce qui a été fait :**
+- `constants/AvatarData.ts` : types `AvatarConfig`, `LockCondition`, `AvatarOption`, `ColorOption` ; toutes les options (peau ×6, style cheveux ×6, couleur cheveux ×6, visage ×5, tenue ×5, couleur tenue ×8, accessoire ×5) ; helpers `getSkinColor/getHairColor/getOutfitColor/isUnlocked`
+- `DEFAULT_AVATAR_CONFIG` : config par défaut
+- `components/avatar-display.tsx` : 7 couches SVG (corps, tenue, cheveux-arrière, tête+oreilles, visage, cheveux-avant, accessoire), ViewBox 100×100, 5 expressions de visage, 5 styles de tenue avec variantes de col
+- `components/avatar-builder.tsx` : modal plein écran, 5 onglets, preview live 140px, `ColorPicker` (pastilles) + `OptionPicker` (chips), bouton reset
+- `STORAGE_KEYS.AVATAR_CONFIG` (JSON) ; anciens `AVATAR_PRESETS` conservés dans `Storage.ts`
+- Profil : avatar SVG remplace l'emoji, tap → ouvre builder
 
-## Contraintes
-- Le système de modes doit être rétro-compatible (les streaks existants ne sont pas perdus)
-- Les avatars SVG doivent être légers (<10KB par calque) pour ne pas alourdir l'app
-- Pas de dépendance lourde pour les avatars — `react-native-svg` suffit
-- Bien séparer la logique (services/stats.ts, services/avatar.ts) des composants
-- Respecter CLAUDE.md : STORAGE_KEYS, services/, haptics, etc.
+**Limitation connue :** les SVG sont un squelette technique fonctionnel (shapes simples). Le rendu final nécessite un passage graphiste (Figma → paths propres). L'architecture est prête pour le swap sans toucher aux interfaces.
 
-## Questions à trancher avec le user
-- Mode explicite (choix utilisateur) ou évolutif (détection auto) ?
-- Combien de fun facts "Le savais-thon" au lancement ? (30 pour un mois, 100 pour couvrir 3 mois ?)
-- Budget graphisme pour les SVG d'avatars ? (Claude peut faire le squelette technique, mais le rendu final dépend des assets)
+---
+
+## Tâche 4 — Déblocage d'items par badges/XP ✅
+
+**Brief** : masque → badge "Première Bulle", combi intégrale → Dive Master (3 000 XP), casquette Revosea → 5 voyages. Cadenas visible sur les items non débloqués.
+
+**Ce qui a été fait :**
+- `isUnlocked(lock, userXp, userTrips, unlockedBadgeIds)` centralisé dans `AvatarData.ts`
+- Locks : `{ type: "badge", value: "first_dive" }` (masque) | `{ type: "xp", value: 3000 }` (combi intégrale) | `{ type: "trips", value: 5 }` (casquette Revosea)
+- UI : opacité 0.5 + 🔒 + hint orange italic (`lockedBy.label`), `H.warning()` au tap
+- `unlockedBadgeIds` = `useMemo` dans `profile.tsx` extrait de `badgesWithProgress.filter(b => b.unlocked).map(b => b.id)`
+- `AvatarBuilder` reçoit `userXp`, `tripCount={trips.length}`, `unlockedBadgeIds` — câblage vérifié correct
+
+**Pour tester les locks :**
+- Masque → 1 observation (badge "Première Bulle" se débloque)
+- Casquette → 5 voyages créés
+- Combi intégrale → ~30 obs (1 500 XP) + 5 voyages (1 000 XP) + quelques espèces découvertes
+
+---
+
+## Roadmap — au-delà du Chat 4
+
+Ce qui n'a pas été traité et qui mérite d'être adressé à terme. Classé par impact/effort.
+
+### 🟢 Facile / quick wins
+
+- **Savaisthon dans les stats de profil** : ajouter le nombre de savaisthons validés dans les `StatBox` ou comme stat séparée
+- **Step dive level à l'onboarding** : `DIVE_LEVEL` existe et se saisit dans le profil, mais n'est pas demandé à l'onboarding — step optionnelle facile à ajouter à `login.tsx` après "mode"
+- **explore.tsx** : l'onglet existe mais est masqué via `href: null` dans `_layout.tsx` — décider de le construire ou le supprimer (mentionné dans CLAUDE.md)
+- **`buildShareText` multi-mode** : le texte de partage utilise `streakCount` + `streakUnit` mais le message n'est pas vraiment adapté aux 3 modes — petit polish éditorial
+- **Snorkel et lunettes de nage non verrouillés** : les 2 accessoires intermédiaires sont accessibles dès le départ. Peut rester ainsi ou recevoir de petits locks (ex : 1 observation).
+
+### 🟠 Moyen
+
+- **Animation de badge débloqué** : aucun feedback visuel quand un badge passe à l'état "unlocked" pour la première fois. Ajouter une modal de célébration déclenchée au moment où `badgesWithProgress` change → `H.success()` + texte festif
+- **Share card visuelle avec avatar SVG** : `buildShareText` est du texte pur. `react-native-view-shot` est déjà dans `package.json` — générer une image PNG de la card profil (avatar SVG inclus) à partager via `Share.share`
+- **Mode auto-évolutif (v2)** : l'app détecte le rythme sur 3 mois et propose de changer de mode. L'architecture est prête (`computeStreak` paramétrique, mode en storage) ; il manque la logique de détection + la modal de proposition
+- **Savaisthon visible depuis le profil** : aujourd'hui uniquement sur l'onglet Scanner. Le dupliquer ou le lier depuis le profil améliorerait la découvrabilité pour les non-photographes
+- **Streak freeze / jours de grâce** : permettre de geler sa streak (1 freeze/mois par exemple) pendant des vacances — important pour la rétention, surtout en mode "regular"
+- **Polish SVG avatars** : remplacer les shapes basiques actuels par des assets Figma propres. L'architecture ne change pas — seuls les internals des composants `avatar-display.tsx` (les `Path`/`Ellipse` etc.) sont à swapper
+
+### 🔴 Gros chantier
+
+- **Publication store** : 13 TODOs dans `app/revosea.tsx`, validation juridique `privacy.tsx` + `terms.tsx`, externaliser `aiUrl` dans `app.json → extra`, décider du sort de `explore.tsx` (CLAUDE.md liste tout en détail)
+- **Notifications push** : rappel quotidien savaisthon, alerte streak en danger (J-1 avant rupture). Nécessite `expo-notifications` + backend (Supabase Edge Function ou service tiers)
+- **Sync avatar vers Supabase** : `AvatarConfig` est actuellement locale (AsyncStorage uniquement). L'ajouter dans `md_profiles` pour la retrouver sur un nouvel appareil — migration à prévoir pour les utilisateurs existants
+- **Challenges saisonniers** : badges liés à des périodes spéciales (Journée Mondiale des Océans le 8 juin, été, etc.) — extension naturelle du système `BadgeDef`
+- **Leaderboard / aspect social** : comparaison entre membres Revosea — nécessite table Supabase publique, profils opt-in, gestion vie privée
+- **Tests automatisés** : zéro test dans l'app. Priorité minimale : Jest sur `services/stats.ts` (computeStreak, computeGoals) avant publication store
+
+---
+
+## TODOs CLAUDE.md — état actuel
+
+| Item | Statut |
+|---|---|
+| 13 placeholders dans `app/revosea.tsx` | ❌ |
+| Validation légale `privacy.tsx` + `terms.tsx` | ❌ |
+| Externaliser `aiUrl` dans `app.json → extra` | ❌ |
+| Décider du sort de `explore.tsx` | ❌ |
+| Polish graphiste des SVG d'avatar | ⚠️ Squelette en place, assets à faire |
+| Mode auto-évolutif (v2) | ⚠️ Architecture prête, logique non écrite |

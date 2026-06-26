@@ -1,74 +1,78 @@
-# Brief Chat 3 — Pokédex repensé + images Supabase
+# Chat 3 — Pokédex repensé + images Supabase — COMPLÉTÉ
 
-## Contexte
-MarineDex est une app Expo/React Native + Supabase pour l'association Revosea.
-Le CLAUDE.md à la racine du projet contient toutes les conventions (lis-le en premier).
-Ce chat couvre le redesign UX du pokédex et la migration des images vers Supabase avec cache offline.
+## Résumé
+Ce chat a couvert le redesign UX du pokédex (filtres compacts, FAB, bottom sheet) et la mise en place d'un système d'images hybride local/Supabase avec cache offline. Toutes les tâches du scope initial ont été réalisées.
 
-## État actuel du Pokédex
-- Fichier : `app/(tabs)/pokedex.tsx` (~550 lignes)
-- Filtres actuels (tous visibles en permanence, empilés verticalement) :
-  1. Barre de recherche
-  2. Statut : Tout / Trouvés / À voir (3 boutons)
-  3. Tri : A-Z / Rareté / Famille / Trouvés d'abord (scroll horizontal)
-  4. Familles : Toutes / Requin / Tortue / etc. (scroll horizontal)
-  5. Océans : Monde / Atlantique / Pacifique / etc. (scroll horizontal)
-- **Problème** : 5 rangées de filtres prennent ~180px avant de voir le premier animal. C'est trop.
+---
 
-## Tâches à réaliser
+## Tâches réalisées
 
-### 1. Refonte UX des filtres (inspiration Pokémon GO)
-**Objectif** : filtres compacts, la liste d'espèces doit dominer l'écran.
+### 1. Refonte UX des filtres ✅
+**Scope initial** : passer de 5 rangées de filtres (~180px) à un layout compact où la liste domine l'écran.
 
-**Proposition recommandée** (à discuter avec le user) :
-- **Garder visible** : barre de recherche + barre de tri compacte (icônes seules, pas de texte)
-- **Bouton flottant "Filtres"** (FAB en bas à droite) qui ouvre un bottom sheet avec :
-  - Statut (Tout / Trouvés / À voir)
-  - Famille (chips sélectionnables)
-  - Océan (chips sélectionnables)
-  - Bouton "Appliquer" + "Réinitialiser"
-  - Badge sur le FAB indiquant le nombre de filtres actifs
-- S'inspirer de Pokémon GO : cards arrondies, silhouette grisée pour les non-découverts, animations subtiles
-- Penser au composant `react-native-gesture-handler` BottomSheet ou un simple `Modal` animé depuis le bas
+**Ce qui a été fait** :
+- **Recherche + tri compact** restent visibles en permanence. Le tri utilise des icônes seules (🔤 ✨ 🐠 ✅) dans des chips 40×36.
+- **FAB "Filtres"** en bas à droite (`position: absolute`, bottom 90) avec badge orange affichant le nombre de filtres actifs.
+- **Bottom sheet animé** via `Modal` + `Animated.spring` (pas de lib externe). Contient statut, famille et océan en chips sélectionnables, avec boutons "Réinitialiser" et "Appliquer (N)".
+- **Grille 3 colonnes** au lieu de 2 — cards plus compactes.
+- **Compteur filtré** "X / Y" affiché à côté du tri.
+- **Bouton reset** dans l'état vide pour tout réinitialiser d'un tap.
+- **Haptics** branchés sur toutes les interactions (tapLight, selection, tapMedium).
+- **Pas de nouvelle lib** : bottom sheet fait avec un `Modal` animé depuis le bas, comme spécifié dans les contraintes.
 
-**Points UX à améliorer** :
-- Cards plus visuelles : image plus grande, nom centré sous l'image
-- Silhouette noire/grisée pour les non-découverts (comme Pokémon GO) plutôt que juste une opacité réduite
-- Compteur filtré visible : "12 / 47 espèces" au lieu de juste le total
+**Décision du user** : silhouette sombre (tintColor) rejetée — le user préfère l'opacité réduite (0.3) pour pouvoir identifier l'animal d'un coup d'œil sans cliquer. Image de la fiche détail agrandie à 220×220 (au lieu de 160×160).
 
-### 2. Images depuis Supabase Storage (avec cache offline)
-**Contexte** : les images sont actuellement en `require("../assets/images/animals/xxx.png")` dans `MarineData.ts`.
-Un bucket Supabase `species-assets` existe avec toutes les photos :
-`https://giibfmhllophrouifedj.supabase.co/storage/v1/object/public/species-assets/anemone_magnifique.png`
+**Fichier modifié** : `app/(tabs)/pokedex.tsx` (~1080 lignes, était ~550).
 
-**Stratégie hybride online/offline** :
-- **Garder les images locales** comme fallback (elles sont déjà bundlées dans l'app)
-- **Charger les images Supabase** quand le réseau est disponible (meilleure qualité, mises à jour sans rebuild)
-- **Cache local** : utiliser `expo-file-system` pour cacher les images téléchargées sur le device
-- Le type `Animal` aurait : `image` (require local) + `remoteImageUrl` (URL Supabase)
-- Le composant d'image fait : `remoteImageUrl` en priorité → cache local → fallback `image` bundlée
+### 2. Images Supabase + cache offline ✅
+**Scope initial** : charger les images depuis le bucket `species-assets` avec fallback local et cache FileSystem.
 
-**Implémentation suggérée** :
-- Créer un service `services/image-cache.ts` :
-  - `getCachedImage(speciesKey: string): string | null` — retourne le path local si caché
-  - `cacheImage(speciesKey: string, url: string): Promise<string>` — télécharge et retourne le path
-  - `getImageSource(animal: Animal): ImageSource` — logique de résolution (cache > remote > local)
-- Créer un composant `components/species-image.tsx` qui encapsule cette logique
-- Pattern de nommage Supabase : `species-assets/{snake_case_name}.png`
+**Ce qui a été fait** :
+- **`services/image-cache.ts`** créé avec :
+  - `toSpeciesKey(name)` : convertit "Requin Baleine" → "requin_baleine" (NFD + strip accents).
+  - `getRemoteUrl(key)` : construit l'URL publique du bucket `species-assets`.
+  - `getCachedImage(key)` : vérifie si l'image est en cache FileSystem.
+  - `cacheImage(key)` : télécharge et stocke dans `${cacheDirectory}species-cache/`.
+  - `resolveImageSource(key, fallback)` : résout cache > remote > local.
+  - `prefetchSpeciesImages(keys)` : batch par lots de 5 (non utilisé pour l'instant, dispo pour un prefetch au login par exemple).
+  - Tous les appels ont try/catch avec fallback silencieux.
+- **`components/species-image.tsx`** créé :
+  - Composant wrapper qui fait cache local → URL remote → fallback bundlé.
+  - Lance le téléchargement + cache en arrière-plan de manière transparente.
+  - `onError` → fallback automatique vers l'image locale.
+  - `transition={200}` pour un fade-in doux.
+  - Props : `name`, `localImage`, `style`, `contentFit`, `tintColor`.
+- **Branché dans le pokédex** : `SpeciesImage` remplace `Image`/`ExpoImage` dans les cards, la fiche détail et le zoom.
+- **Pas de modification du type `Animal`** : l'URL remote est générée dynamiquement à partir du nom (pas besoin de `remoteImageUrl` dans le type).
+- **`expo-file-system`** ajouté explicitement dans package.json (était transitif via expo).
 
-**Use case mer/plage** :
-- En plongée : pas de réseau → les images locales bundlées s'affichent (pas de chargement)
-- Sur la plage avec 4G : les images Supabase (potentiellement plus belles/à jour) se chargent et se cachent
-- Retour en plongée : les images cachées sont utilisées
-- C'est la meilleure approche car ça ne pénalise jamais l'utilisateur offline
+### 3. Lien carte → pokédex filtré ✅
+**Scope initial** : pré-appliquer un filtre famille depuis la carte via query param.
 
-### 3. Lien carte → pokédex filtré
-- Quand on arrive sur le pokédex avec un paramètre `?family=Cétacé` (depuis la carte), pré-appliquer le filtre famille.
-- Utiliser `useLocalSearchParams` pour lire le paramètre.
-- Si le nouveau système de filtres utilise un bottom sheet, ouvrir directement le sheet avec le filtre pré-appliqué.
+**Ce qui a été fait** :
+- `useLocalSearchParams<{ family?: string }>()` lit le paramètre.
+- `useEffect` sur `params.family` : applique `setFamilyFilter(params.family)` et ouvre le bottom sheet automatiquement.
+- Prêt à être utilisé depuis la carte avec `router.push('/(tabs)/pokedex?family=Cétacé')`.
 
-## Contraintes
-- Pas de nouvelle lib lourde (pas de `@gorhom/bottom-sheet` sauf si déjà installé — vérifier le package.json). Un `Modal` animé suffit.
-- Les images locales restent dans le bundle comme fallback — ne pas les supprimer
-- `expo-file-system` est probablement déjà installé (vérifier), sinon c'est une dépendance légère et justifiée
-- Respecter CLAUDE.md : STORAGE_KEYS, services/, haptics, composants extraits, etc.
+---
+
+## Ce qui n'a PAS été fait (hors scope, pour roadmap future)
+
+### Extensions du pokédex
+- **Brancher `SpeciesImage` dans les autres écrans** : `index.tsx` (accueil, dernières découvertes), `map.tsx` (markers + sheet espèce), `profile.tsx` (buddy + liste espèces). Actuellement ces écrans utilisent encore `Image` de react-native avec `item.image` en dur. Migration triviale mais non demandée.
+- **Prefetch des images au login/sync** : `prefetchSpeciesImages()` est prêt dans le service mais n'est appelé nulle part. Pourrait être déclenché après un sync réussi ou au premier lancement sur WiFi.
+- **Gestion de la taille du cache** : pas de purge automatique ni de limite. Si le bucket a 50+ espèces en haute résolution, le cache pourrait grossir. Ajouter un `clearCache()` ou une limite LRU si besoin.
+- **Placeholder/skeleton pendant le chargement remote** : le composant `SpeciesImage` passe directement de l'image locale au remote sans état de chargement intermédiaire visible. Ajouter un shimmer/placeholder si les images sont lourdes.
+- **Animation d'ouverture du bottom sheet** : actuellement `Animated.spring`, mais pas de gesture drag-to-dismiss. Faisable avec `react-native-gesture-handler` (déjà installé) si on veut un swipe-down pour fermer.
+- **Recherche fuzzy** : la recherche actuelle est un simple `includes()`. Pas de tolérance aux fautes de frappe. Un algo de distance de Levenshtein ou un index de recherche pourrait aider.
+- **Filtres persistés** : les filtres se réinitialisent à chaque visite. Possibilité de sauvegarder le dernier état via AsyncStorage si le user le souhaite.
+- **Nombre d'espèces par famille** : le bottom sheet pourrait afficher "Requin (12)" à côté de chaque chip pour donner du contexte.
+
+### Images & assets
+- **Vérifier la cohérence du bucket** : s'assurer que CHAQUE espèce de `MarineData.ts` a son image dans `species-assets` avec le bon nommage snake_case. Une espèce manquante = fallback silencieux vers le bundlé, pas de crash, mais c'est invisible.
+- **Optimisation des images Supabase** : pas de redimensionnement côté serveur. Si les images du bucket sont en 4K, elles seront téléchargées en 4K. Supabase supporte les transformations d'images (resize on-the-fly) avec le plan Pro — à considérer.
+- **WebP** : le bucket semble en PNG. Convertir en WebP réduirait significativement la taille du cache et le temps de téléchargement.
+
+### Architecture globale
+- **Le pokédex fait ~1080 lignes** : la fiche détail (modal) pourrait être extraite en `components/species-detail-modal.tsx`, et le bottom sheet filtres en `components/pokedex-filter-sheet.tsx`. Pas critique mais améliorerait la lisibilité.
+- **`router` utilisé pour naviguer vers le logbook** depuis la fiche espèce (observations). Le lien inverse (logbook → pokédex → fiche espèce) n'existe pas encore.
