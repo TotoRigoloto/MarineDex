@@ -4,6 +4,11 @@
 import { AVATAR_PRESETS, getAvatarById, STORAGE_KEYS } from "@/constants/Storage";
 import { signIn, signUp } from "@/services/auth";
 import * as H from "@/services/haptics";
+import {
+  USER_MODE_DESCRIPTIONS,
+  USER_MODE_LABELS,
+  UserMode,
+} from "@/services/stats";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -25,7 +30,14 @@ import {
 
 const { height } = Dimensions.get("window");
 
-type Step = "welcome" | "signup" | "signin";
+type Step = "welcome" | "signup" | "signin" | "mode";
+
+// Emojis et labels affichés dans les cartes de sélection de mode
+const MODE_CARDS: { mode: UserMode; emoji: string }[] = [
+  { mode: "city",    emoji: "🏙️" },
+  { mode: "coastal", emoji: "🏖️" },
+  { mode: "regular", emoji: "🌊" },
+];
 
 export default function LoginScreen() {
   const [step, setStep] = useState<Step>("welcome");
@@ -33,6 +45,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [avatarId, setAvatarId] = useState<string>(AVATAR_PRESETS[0].id);
+  const [selectedMode, setSelectedMode] = useState<UserMode>("regular");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,7 +95,7 @@ export default function LoginScreen() {
 
       if (data.session) {
         H.success();
-        router.replace("/(tabs)");
+        setStep("mode");
       } else {
         H.tapMedium();
         setInfo(
@@ -132,6 +145,14 @@ export default function LoginScreen() {
       [STORAGE_KEYS.HAS_ACCOUNT, "true"],
       [STORAGE_KEYS.ONBOARDING_DONE, "true"],
     ]);
+    H.tapLight();
+    setStep("mode");
+  };
+
+  // Sauvegarde le mode choisi et redirige vers l'app
+  const confirmMode = async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.USER_MODE, selectedMode);
+    H.success();
     router.replace("/(tabs)");
   };
 
@@ -301,6 +322,61 @@ export default function LoginScreen() {
                 En t&apos;inscrivant tu acceptes nos CGU et notre politique de
                 confidentialité.
               </Text>
+            </Animated.View>
+          )}
+
+          {/* ── ÉTAPE MODE : choisir son rythme marin ── */}
+          {step === "mode" && (
+            <Animated.View
+              style={[
+                styles.center,
+                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+              ]}
+            >
+              <Text style={{ fontSize: 48, marginBottom: 12 }}>🧭</Text>
+              <Text style={styles.title}>Ton rythme marin</Text>
+              <Text style={styles.subtitle}>
+                Adapte ta streak et tes objectifs à ta pratique
+              </Text>
+
+              <View style={{ width: "100%", marginTop: 16, gap: 12 }}>
+                {MODE_CARDS.map(({ mode, emoji }) => (
+                  <TouchableOpacity
+                    key={mode}
+                    style={[
+                      styles.modeCard,
+                      selectedMode === mode && styles.modeCardSelected,
+                    ]}
+                    onPress={() => {
+                      H.tapLight();
+                      setSelectedMode(mode);
+                    }}
+                  >
+                    <Text style={styles.modeCardEmoji}>{emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modeCardLabel}>
+                        {/* Retire l'emoji du label (déjà affiché à côté) */}
+                        {USER_MODE_LABELS[mode].replace(/^\S+\s/, "")}
+                      </Text>
+                      <Text style={styles.modeCardDesc}>
+                        {USER_MODE_DESCRIPTIONS[mode]}
+                      </Text>
+                    </View>
+                    {selectedMode === mode && (
+                      <Text style={{ fontSize: 20 }}>✅</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { marginTop: 24 }]}
+                onPress={confirmMode}
+              >
+                <Text style={styles.primaryButtonText}>
+                  Commencer l&apos;aventure 🌊
+                </Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
 
@@ -508,5 +584,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 14,
     fontSize: 14,
+  },
+
+  // ─── Sélecteur de mode ───
+  modeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "transparent",
+    gap: 14,
+  },
+  modeCardSelected: {
+    borderColor: "#FFB300",
+    backgroundColor: "rgba(255,179,0,0.12)",
+  },
+  modeCardEmoji: { fontSize: 32, width: 40, textAlign: "center" },
+  modeCardLabel: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  modeCardDesc: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    marginTop: 3,
   },
 });
