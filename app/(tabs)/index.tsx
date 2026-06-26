@@ -16,6 +16,7 @@ import { getDailyFact, FunFact, todayKey } from "@/constants/FunFacts";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import * as H from "@/services/haptics";
 import { supabase } from "@/services/supabase";
+import { syncAll } from "@/services/sync";
 import { generateUUID } from "@/services/uuid";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -259,6 +260,9 @@ export default function HomeScreen() {
       } catch {
         // pas grave si offline
       }
+
+      // Sync silencieuse (pokédex + obs + scans)
+      syncAll().catch(() => {});
     } catch (e) {
       console.error(e);
     }

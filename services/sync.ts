@@ -6,7 +6,7 @@
 // Hors-ligne : on continue d'écrire en local. Le prochain call à
 // syncAll() poussera les nouveautés.
 
-import { Dive, Observation, Trip } from "@/constants/MarineData";
+import { Animal, Dive, initialAnimals, Observation, Trip } from "@/constants/MarineData";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
@@ -182,6 +182,14 @@ function dbDiveToLocal(d: DbDive): Dive {
   };
 }
 
+// ============== TYPES & MAPPERS POKÉDEX ==============
+// Schéma réel : user_id (uuid), species_name (text), first_observed_at (timestamptz)
+interface DbPokedexEntry {
+  user_id: string;
+  species_name: string;
+  first_observed_at: string | null;
+}
+
 // ============== PHOTO UPLOAD ==============
 // Upload une URI locale (file://...) vers Supabase Storage.
 // Retourne le path stocké en base, ou l'URI originale si l'upload échoue.
@@ -253,6 +261,8 @@ export interface SyncResult {
   pulledObs: number;
   pushedDives: number;
   pulledDives: number;
+  pushedPokedex: number;
+  pulledPokedex: number;
   error?: string;
 }
 
@@ -273,6 +283,8 @@ export async function syncAll(): Promise<SyncResult> {
       pulledObs: 0,
       pushedDives: 0,
       pulledDives: 0,
+      pushedPokedex: 0,
+      pulledPokedex: 0,
       error: "Pas de session — sync ignorée",
     };
   }
@@ -282,18 +294,33 @@ export async function syncAll(): Promise<SyncResult> {
     pushedObs = 0,
     pulledObs = 0,
     pushedDives = 0,
-    pulledDives = 0;
+    pulledDives = 0,
+    pushedPokedex = 0,
+    pulledPokedex = 0;
 
   try {
     // ====== LECTURES LOCALES ======
-    const [lt, lo, ld] = await AsyncStorage.multiGet([
+    const [lt, lo, ld, lp] = await AsyncStorage.multiGet([
       STORAGE_KEYS.TRIPS,
       STORAGE_KEYS.LOGS,
       STORAGE_KEYS.DIVES,
+      STORAGE_KEYS.POKEDEX,
     ]);
     const localTrips: Trip[] = lt[1] ? JSON.parse(lt[1]) : [];
     const localObs: Observation[] = lo[1] ? JSON.parse(lo[1]) : [];
     const localDives: Dive[] = ld[1] ? JSON.parse(ld[1]) : [];
+
+    // Pokédex local : on merge avec initialAnimals pour avoir la liste complète
+    let localPokedex: Animal[] = initialAnimals;
+    if (lp[1]) {
+      const saved: Animal[] = JSON.parse(lp[1]);
+      localPokedex = initialAnimals.map((s) => {
+        const found = saved.find(
+          (a) => a.name.trim().toLowerCase() === s.name.trim().toLowerCase(),
+        );
+        return found ? { ...s, discovered: found.discovered } : s;
+      });
+    }
 
     // ====== PUSH TRIPS ======
     for (const t of localTrips) {
@@ -390,6 +417,40 @@ export async function syncAll(): Promise<SyncResult> {
       }
     });
 
+    // ====== PUSH POKÉDEX (espèces découvertes) ======
+    const discoveredLocal = localPokedex.filter((a) => a.discovered);
+    for (const a of discoveredLocal) {
+      const payload: DbPokedexEntry = {
+        user_id: user.id,
+        species_name: a.name,
+        first_observed_at: new Date().toISOString(),
+      };
+      const { error } = await supabase
+        .from("md_pokedex")
+        .upsert(payload, { onConflict: "user_id,species_name", ignoreDuplicates: true });
+      if (!error) pushedPokedex++;
+      else console.warn("[sync] pokedex push error:", error.message);
+    }
+
+    // ====== PULL POKÉDEX ======
+    const { data: cloudPokedex } = await supabase
+      .from("md_pokedex")
+      .select("*");
+    if (cloudPokedex) {
+      const cloudNames = new Set(
+        (cloudPokedex as DbPokedexEntry[]).map(
+          (e) => e.species_name.trim().toLowerCase(),
+        ),
+      );
+      localPokedex = localPokedex.map((a) => {
+        if (!a.discovered && cloudNames.has(a.name.trim().toLowerCase())) {
+          pulledPokedex++;
+          return { ...a, discovered: true };
+        }
+        return a;
+      });
+    }
+
     // Persiste le merge
     await AsyncStorage.multiSet([
       [
@@ -409,18 +470,24 @@ export async function syncAll(): Promise<SyncResult> {
           ),
         ),
       ],
+      [STORAGE_KEYS.POKEDEX, JSON.stringify(localPokedex)],
+      [STORAGE_KEYS.LAST_SYNC_AT, new Date().toISOString()],
     ]);
 
-    return { ok: true, pushedTrips, pulledTrips, pushedObs, pulledObs, pushedDives, pulledDives };
+    return {
+      ok: true,
+      pushedTrips, pulledTrips,
+      pushedObs, pulledObs,
+      pushedDives, pulledDives,
+      pushedPokedex, pulledPokedex,
+    };
   } catch (e: any) {
     return {
       ok: false,
-      pushedTrips,
-      pulledTrips,
-      pushedObs,
-      pulledObs,
-      pushedDives,
-      pulledDives,
+      pushedTrips, pulledTrips,
+      pushedObs, pulledObs,
+      pushedDives, pulledDives,
+      pushedPokedex, pulledPokedex,
       error: e?.message ?? "erreur inconnue",
     };
   }

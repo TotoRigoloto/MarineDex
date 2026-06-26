@@ -24,7 +24,7 @@ import EmptyState from "@/components/empty-state";
 import { SkeletonList } from "@/components/skeleton";
 import { loadDives, saveDive, deleteDive as deleteDiveLocal } from "@/services/dives";
 import * as H from "@/services/haptics";
-import { deleteObsCloud, deleteDiveCloud } from "@/services/sync";
+import { deleteObsCloud, deleteDiveCloud, syncAll } from "@/services/sync";
 import { generateUUID } from "@/services/uuid";
 import { fetchWeather, toIsoDate } from "@/services/weather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -492,6 +492,8 @@ export default function LogbookScreen() {
       await AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(updated));
       setFormVisible(false);
       H.success();
+      // Sync silencieuse en arrière-plan
+      syncAll().catch(() => {});
     } catch (e) {
       console.error(e);
       H.error();
@@ -934,6 +936,7 @@ export default function LogbookScreen() {
     await AsyncStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(updated));
     setTripFormVisible(false);
     H.success();
+    syncAll().catch(() => {});
   };
 
   // ====== Renderers ======

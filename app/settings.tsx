@@ -104,10 +104,9 @@ export default function SettingsScreen() {
     if (r.ok) {
       const now = new Date().toLocaleString();
       setLastSync(now);
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_SYNC_AT, now);
       Alert.alert(
         "Sync terminée ✓",
-        `Envoyés : ${r.pushedTrips} voyages, ${r.pushedDives} plongées, ${r.pushedObs} obs.\nReçus : ${r.pulledTrips} voyages, ${r.pulledDives} plongées, ${r.pulledObs} obs.`,
+        `Envoyés : ${r.pushedTrips} voyages, ${r.pushedDives} plongées, ${r.pushedObs} obs, ${r.pushedPokedex} espèces.\nReçus : ${r.pulledTrips} voyages, ${r.pulledDives} plongées, ${r.pulledObs} obs, ${r.pulledPokedex} espèces.`,
       );
     } else {
       Alert.alert("Erreur de sync", r.error ?? "Inconnue");

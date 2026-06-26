@@ -5,7 +5,8 @@ import {
 } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 
@@ -14,6 +15,7 @@ import SplashLoader from "@/components/splash-loader";
 import { STORAGE_KEYS } from "@/constants/Storage";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "@/services/supabase";
+import { syncAll } from "@/services/sync";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const unstable_settings = {
@@ -72,9 +74,38 @@ function useAuthRedirect() {
   return ready;
 }
 
+// Sync automatique : au login et au retour dans l'app (AppState → active)
+function useAutoSync() {
+  const hasSyncedOnMount = useRef(false);
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    // Sync initiale au montage (= après login)
+    if (!hasSyncedOnMount.current) {
+      hasSyncedOnMount.current = true;
+      syncAll().then((r) => {
+        if (!r.ok) console.warn("[auto-sync] init:", r.error);
+      });
+    }
+
+    // Sync au retour dans l'app (background → active)
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (appState.current.match(/inactive|background/) && next === "active") {
+        syncAll().then((r) => {
+          if (!r.ok) console.warn("[auto-sync] resume:", r.error);
+        });
+      }
+      appState.current = next;
+    });
+
+    return () => sub.remove();
+  }, []);
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const ready = useAuthRedirect();
+  useAutoSync();
 
   if (!ready) {
     return <SplashLoader subtitle="Préparation de l'océan…" />;
